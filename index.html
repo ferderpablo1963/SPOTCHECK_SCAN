@@ -21,12 +21,12 @@
         .mesa-free { background-color: #ffffff; color: #64748b; border-color: #e2e8f0; }
         .mesa-occupied { background-color: #000000 !important; color: #ffffff !important; border-color: #000000 !important; }
         
-        /* Controles de Diseño */
-        .selected-mesa { border: 2px solid #10b981 !important; z-index: 50 !important; }
-        .handle { position: absolute; width: 20px; height: 20px; background: white; border: 2px solid #10b981; border-radius: 50%; z-index: 60; display: none; }
+        /* Controles de Diseño por Toque */
+        .selected-mesa { border: 3px solid #10b981 !important; z-index: 50 !important; }
+        .handle { position: absolute; width: 24px; height: 24px; background: #10b981; border: 3px solid white; border-radius: 50%; z-index: 60; display: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         .selected-mesa .handle { display: block; }
-        .handle-br { bottom: -10px; right: -10px; cursor: nwse-resize; }
-        .handle-rot { top: -30px; left: 50%; transform: translateX(-50%); background: #10b981; }
+        .handle-br { bottom: -12px; right: -12px; cursor: nwse-resize; }
+        .handle-rot { top: -35px; left: 50%; transform: translateX(-50%); }
 
         .screen-overlay { position: fixed; inset: 0; top: 205px; background-color: #f8fafc; z-index: 100; display: none; overflow-y: auto; padding-bottom: 100px; }
         .screen-overlay.active { display: block; }
@@ -107,7 +107,7 @@
     <div id="toast" class="bg-slate-950 text-white px-8 py-4 rounded-3xl font-bold text-xs shadow-2xl z-[300]"><span id="toast-msg"></span></div>
 
     <script>
-        const DB_PREFIX = 'spotcheck_1225_v6';
+        const DB_PREFIX = 'spotcheck_1225_v7';
         let tables = JSON.parse(localStorage.getItem(`${DB_PREFIX}_tables`)) || [];
         let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
         let isLocked = true, currentMode = 'audit', selectedId = null;
@@ -138,18 +138,17 @@
                 div.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px; transform: rotate(${t.r || 0}deg);`;
                 div.innerHTML = `<span>${t.label}</span>`;
                 
-                // PUNTOS DE CONTROL (SOLO DISEÑO)
                 if(currentMode === 'design' && selectedId === t.id) {
-                    const handleResize = document.createElement('div');
-                    handleResize.className = 'handle handle-br';
-                    handleResize.ontouchstart = (e) => startResize(e, t);
-                    div.appendChild(handleResize);
+                    const hSize = document.createElement('div');
+                    hSize.className = 'handle handle-br';
+                    hSize.ontouchstart = (e) => startAction(e, t, 'resize');
+                    div.appendChild(hSize);
 
-                    const handleRot = document.createElement('div');
-                    handleRot.className = 'handle handle-rot';
-                    handleRot.innerHTML = '<i class="fa-solid fa-rotate text-[8px] text-white"></i>';
-                    handleRot.ontouchstart = (e) => startRotate(e, t);
-                    div.appendChild(handleRot);
+                    const hRot = document.createElement('div');
+                    hRot.className = 'handle handle-rot';
+                    hRot.innerHTML = '<i class="fa-solid fa-rotate text-[10px] text-white"></i>';
+                    hRot.ontouchstart = (e) => startAction(e, t, 'rotate');
+                    div.appendChild(hRot);
                 }
 
                 div.onclick = (e) => {
@@ -158,16 +157,16 @@
                         t.status = t.status === 'free' ? 'occupied' : 'free';
                         saveData(); render();
                     } else if (currentMode === 'design') {
-                        selectedId = t.id; render();
-                        if (e.detail === 2) { // Doble click/tap para renombrar
-                            const n = prompt("Número de mesa:", t.label);
-                            if(n) { t.label = n; saveData(); render(); }
+                        if (selectedId === t.id && e.detail === 2) { 
+                            const n = prompt("Nombre/Número de mesa:", t.label);
+                            if(n !== null) { t.label = n; saveData(); render(); }
                         }
+                        selectedId = t.id; render();
                     }
                 };
 
                 if (currentMode === 'design' && !isLocked) {
-                    div.ontouchstart = (e) => { if(e.target === div || e.target.tagName === 'SPAN') startDrag(e, t); };
+                    div.ontouchstart = (e) => { if(e.target === div || e.target.tagName === 'SPAN') startAction(e, t, 'drag'); };
                 }
                 layer.appendChild(div);
             });
@@ -175,45 +174,50 @@
             document.getElementById('stat-percent').innerText = Math.round((count/Math.max(1,tables.length))*100) + '%';
         }
 
-        // --- INTERACCIÓN TÁCTIL ---
-        function startDrag(e, t) {
-            const touch = e.touches[0];
-            let sx = touch.clientX - t.x, sy = touch.clientY - t.y;
-            const move = (me) => { t.x = me.touches[0].clientX - sx; t.y = me.touches[0].clientY - sy; render(); };
-            const end = () => { window.removeEventListener('touchmove', move); saveData(); };
-            window.addEventListener('touchmove', move); window.addEventListener('touchend', end);
-        }
-
-        function startResize(e, t) {
+        // --- MANEJO TÁCTIL UNIFICADO ---
+        function startAction(e, t, type) {
             e.stopPropagation();
             const touch = e.touches[0];
-            let sw = t.w, sh = t.h, sx = touch.clientX, sy = touch.clientY;
-            const move = (me) => {
-                t.w = Math.max(30, sw + (me.touches[0].clientX - sx));
-                t.h = Math.max(30, sh + (me.touches[0].clientY - sy));
-                render();
-            };
-            const end = () => { window.removeEventListener('touchmove', move); saveData(); };
-            window.addEventListener('touchmove', move); window.addEventListener('touchend', end);
-        }
+            const startX = touch.clientX;
+            const startY = touch.clientY;
+            const startW = t.w;
+            const startH = t.h;
+            const startXPos = t.x;
+            const startYPos = t.y;
+            const startR = t.r || 0;
 
-        function startRotate(e, t) {
-            e.stopPropagation();
-            const move = (me) => {
-                const rect = document.querySelector('.selected-mesa').getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2, centerY = rect.top + rect.height / 2;
-                const angle = Math.atan2(me.touches[0].clientY - centerY, me.touches[0].clientX - centerX);
-                t.r = angle * (180 / Math.PI) + 90;
+            const onMove = (me) => {
+                const mt = me.touches[0];
+                if (type === 'drag') {
+                    t.x = startXPos + (mt.clientX - startX);
+                    t.y = startYPos + (mt.clientY - startY);
+                } else if (type === 'resize') {
+                    t.w = Math.max(40, startW + (mt.clientX - startX));
+                    t.h = Math.max(40, startH + (mt.clientY - startY));
+                } else if (type === 'rotate') {
+                    const rect = document.querySelector('.selected-mesa').getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const angle = Math.atan2(mt.clientY - centerY, mt.clientX - centerX);
+                    t.r = angle * (180 / Math.PI) + 90;
+                }
                 render();
             };
-            const end = () => { window.removeEventListener('touchmove', move); saveData(); };
-            window.addEventListener('touchmove', move); window.addEventListener('touchend', end);
+
+            const onEnd = () => {
+                window.removeEventListener('touchmove', onMove);
+                window.removeEventListener('touchend', onEnd);
+                saveData();
+            };
+
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
         }
 
         function deselectAll(e) { if(e.target.id === 'main-scroll' || e.target.id === 'map-container') { selectedId = null; render(); } }
 
-        // --- SISTEMA ORIGINAL (SIN CAMBIOS) ---
-        function addNewMesa() { tables.push({ id: Date.now(), label: "?", x: 50, y: 50, w: 70, h: 70, r: 0, status: 'free' }); render(); }
+        // --- SISTEMA BASE INTACTO ---
+        function addNewMesa() { tables.push({ id: Date.now(), label: "?", x: 80, y: 80, w: 70, h: 70, r: 0, status: 'free' }); render(); saveData(); }
         function processImage(file) {
             Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
                 const regex = /Tbl\s+(\d+)\s*\//g; let match;
