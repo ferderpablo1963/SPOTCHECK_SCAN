@@ -15,33 +15,29 @@
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; background-color: #f8fafc; }
         #main-scroll { overflow: auto; position: relative; background-color: #e2e8f0; height: calc(100vh - 205px); }
-        #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transform-origin: top left; transition: transform 0.2s; }
+        #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transform-origin: top left; }
         
-        .mesa { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-size: 14px; border: 2px solid transparent; touch-action: none; }
+        .mesa { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-size: 14px; touch-action: none; border: 2px solid transparent; }
         .mesa-free { background-color: #ffffff; color: #64748b; border-color: #e2e8f0; }
-        .mesa-occupied { background-color: #000000 !important; color: #ffffff !important; border-color: #000000 !important; }
+        .mesa-occupied { background-color: #000000 !important; color: #ffffff !important; }
         
-        /* Controles de Diseño por Toque */
-        .selected-mesa { border: 3px solid #10b981 !important; z-index: 50 !important; }
-        .handle { position: absolute; width: 24px; height: 24px; background: #10b981; border: 3px solid white; border-radius: 50%; z-index: 60; display: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        /* Controles de Diseño */
+        .selected-mesa { border: 3px solid #10b981 !important; z-index: 100 !important; }
+        .handle { position: absolute; width: 30px; height: 30px; background: #10b981; border: 4px solid white; border-radius: 50%; z-index: 110; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .selected-mesa .handle { display: block; }
-        .handle-br { bottom: -12px; right: -12px; cursor: nwse-resize; }
-        .handle-rot { top: -35px; left: 50%; transform: translateX(-50%); }
+        .handle-br { bottom: -15px; right: -15px; }
+        .handle-rot { top: -45px; left: 50%; transform: translateX(-50%); }
 
-        .screen-overlay { position: fixed; inset: 0; top: 205px; background-color: #f8fafc; z-index: 100; display: none; overflow-y: auto; padding-bottom: 100px; }
+        .screen-overlay { position: fixed; inset: 0; top: 205px; background-color: #f8fafc; z-index: 200; display: none; overflow-y: auto; }
         .screen-overlay.active { display: block; }
-        #toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px); transition: 0.3s; z-index: 1000; }
-        #toast.show { transform: translateX(-50%) translateY(0); }
         .btn-active { background-color: white !important; color: #0f172a !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden select-none">
 
-    <header class="bg-slate-950 text-white p-5 pt-12 flex justify-between items-center shrink-0 z-[110]">
+    <header class="bg-slate-950 text-white p-5 pt-12 flex justify-between items-center shrink-0 z-[210]">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center transform -rotate-3">
-                <i class="fa-solid fa-layer-group text-slate-950 text-xl"></i>
-            </div>
+            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center transform -rotate-3"><i class="fa-solid fa-layer-group text-slate-950 text-xl"></i></div>
             <div>
                 <h1 class="font-black text-xl italic leading-none tracking-tighter">SPOT CHECK</h1>
                 <p class="text-[8px] text-slate-400 font-black uppercase mt-1">LOBBY BAR 1225</p>
@@ -58,18 +54,15 @@
         </div>
     </header>
 
-    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-[110] shrink-0">
+    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-[210] shrink-0">
         <div class="flex gap-6">
             <div><span class="text-[8px] font-black text-slate-400 uppercase block">In Situ</span><span id="stat-occupied" class="text-xl font-black italic text-slate-900">0</span></div>
-            <div class="border-l border-slate-100 pl-6">
-                <span class="text-[8px] font-black text-slate-400 uppercase block">Ratio</span>
-                <span id="stat-percent" class="text-xl font-black text-emerald-600 italic">0%</span>
-            </div>
+            <div class="border-l border-slate-100 pl-6"><span class="text-[8px] font-black text-slate-400 uppercase block">Ratio</span><span id="stat-percent" class="text-xl font-black text-emerald-600 italic">0%</span></div>
         </div>
         <p id="current-time" class="text-[10px] font-black uppercase text-slate-900">00:00</p>
     </div>
 
-    <nav class="px-4 py-3 bg-slate-50 flex gap-2 border-b border-slate-200 shrink-0 z-[110]">
+    <nav class="px-4 py-3 bg-slate-50 flex gap-2 border-b border-slate-200 shrink-0 z-[210]">
         <div class="flex w-full bg-slate-200/50 p-1 rounded-2xl">
             <button onclick="setMode('audit')" id="nav-audit" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase btn-active">Auditar</button>
             <button onclick="setMode('design')" id="nav-design" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase text-slate-400">Diseño</button>
@@ -78,41 +71,25 @@
         </div>
     </nav>
 
-    <main class="flex-1 relative" id="main-scroll" onclick="deselectAll(event)">
+    <main class="flex-1 relative" id="main-scroll" onmousedown="deselectAll(event)">
         <div id="map-container">
             <div id="mesas-layer" class="w-full h-full relative"></div>
         </div>
-        <button id="btn-add" onclick="addNewMesa()" class="fixed right-6 bottom-32 w-16 h-16 bg-slate-950 text-emerald-400 rounded-full shadow-2xl flex items-center justify-center z-[120] hidden border-4 border-white active:scale-90 transition-transform">
+        <button id="btn-add" onclick="addNewMesa()" class="fixed right-6 bottom-32 w-16 h-16 bg-slate-950 text-emerald-400 rounded-full shadow-2xl flex items-center justify-center z-[220] hidden border-4 border-white active:scale-90 transition-transform">
             <i class="fa-solid fa-plus text-xl"></i>
         </button>
     </main>
 
-    <div id="notes-screen" class="screen-overlay p-6">
-        <div class="bg-white p-8 rounded-[40px] shadow-sm border max-w-md mx-auto w-full space-y-6 mt-10">
-            <h3 class="text-sm font-black uppercase text-center">Cierre de Auditoría</h3>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-slate-100 p-4 rounded-2xl text-center">
-                    <span class="text-[8px] font-black text-slate-400">IN SITU</span>
-                    <input id="note-insitu" type="number" readonly class="w-full bg-transparent text-center font-black text-2xl">
-                </div>
-                <div class="bg-white border-2 border-emerald-500 p-4 rounded-2xl text-center">
-                    <span class="text-[8px] font-black text-emerald-600">POS</span>
-                    <input id="note-micros" type="number" placeholder="0" class="w-full bg-transparent text-center font-black text-2xl outline-none">
-                </div>
-            </div>
-            <button onclick="saveAudit()" class="w-full h-16 bg-slate-950 text-emerald-400 rounded-2xl font-black uppercase text-xs">Guardar Reporte</button>
-        </div>
-    </div>
+    <div id="notes-screen" class="screen-overlay p-6"><div class="bg-white p-8 rounded-[40px] border max-w-md mx-auto mt-10"><h3 class="text-center font-black uppercase text-xs mb-6">Cierre de Auditoría</h3><div class="grid grid-cols-2 gap-4 mb-6"><div class="bg-slate-100 p-4 rounded-2xl text-center text-2xl font-black italic" id="note-insitu">0</div><input id="note-micros" type="number" placeholder="POS" class="bg-white border-2 border-emerald-500 p-4 rounded-2xl text-center text-2xl font-black outline-none"></div><button onclick="saveAudit()" class="w-full h-16 bg-slate-950 text-emerald-400 rounded-2xl font-black uppercase text-xs">Guardar Reporte</button></div></div>
     <div id="history-screen" class="screen-overlay p-6"><div id="history-list" class="space-y-4"></div></div>
-    <div id="toast" class="bg-slate-950 text-white px-8 py-4 rounded-3xl font-bold text-xs shadow-2xl z-[300]"><span id="toast-msg"></span></div>
 
     <script>
-        const DB_PREFIX = 'spotcheck_1225_v7';
+        const DB_PREFIX = 'spotcheck_1225_v8';
         let tables = JSON.parse(localStorage.getItem(`${DB_PREFIX}_tables`)) || [];
         let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
         let isLocked = true, currentMode = 'audit', selectedId = null;
 
-        function init() { if (tables.length === 0) tables = [{ id: Date.now(), label: "1", x: 100, y: 100, w: 70, h: 70, r: 0, status: 'free' }]; render(); startTime(); }
+        function init() { if (tables.length === 0) tables = [{ id: Date.now(), label: "1", x: 100, y: 100, w: 80, h: 80, r: 0, status: 'free' }]; render(); startTime(); }
 
         function setMode(m) {
             currentMode = m;
@@ -122,7 +99,7 @@
             document.getElementById('btn-add').classList.toggle('hidden', m !== 'design');
             document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
             document.getElementById('history-screen').classList.toggle('active', m === 'history');
-            if (m === 'notes') document.getElementById('note-insitu').value = tables.filter(t => t.status === 'occupied').length;
+            if (m === 'notes') document.getElementById('note-insitu').innerText = tables.filter(t => t.status === 'occupied').length;
             if (m === 'history') renderHistory();
             selectedId = null; render();
         }
@@ -141,50 +118,46 @@
                 if(currentMode === 'design' && selectedId === t.id) {
                     const hSize = document.createElement('div');
                     hSize.className = 'handle handle-br';
-                    hSize.ontouchstart = (e) => startAction(e, t, 'resize');
+                    hSize.ontouchstart = (e) => { e.preventDefault(); startAction(e, t, 'resize'); };
                     div.appendChild(hSize);
 
                     const hRot = document.createElement('div');
                     hRot.className = 'handle handle-rot';
-                    hRot.innerHTML = '<i class="fa-solid fa-rotate text-[10px] text-white"></i>';
-                    hRot.ontouchstart = (e) => startAction(e, t, 'rotate');
+                    hRot.innerHTML = '<i class="fa-solid fa-rotate text-white text-[10px]"></i>';
+                    hRot.ontouchstart = (e) => { e.preventDefault(); startAction(e, t, 'rotate'); };
                     div.appendChild(hRot);
                 }
 
-                div.onclick = (e) => {
-                    e.stopPropagation();
+                // GESTIÓN DE TOQUE PARA DISEÑO O AUDITORÍA
+                let lastTap = 0;
+                div.ontouchstart = (e) => {
                     if (currentMode === 'audit') {
                         t.status = t.status === 'free' ? 'occupied' : 'free';
                         saveData(); render();
                     } else if (currentMode === 'design') {
-                        if (selectedId === t.id && e.detail === 2) { 
-                            const n = prompt("Nombre/Número de mesa:", t.label);
-                            if(n !== null) { t.label = n; saveData(); render(); }
+                        e.preventDefault();
+                        const now = Date.now();
+                        if (now - lastTap < 300) { // DOBLE TOQUE
+                            const n = prompt("Editar número:", t.label);
+                            if (n !== null) { t.label = n; saveData(); render(); }
+                        } else {
+                            selectedId = t.id;
+                            render();
+                            if (!isLocked) startAction(e, t, 'drag');
                         }
-                        selectedId = t.id; render();
+                        lastTap = now;
                     }
                 };
-
-                if (currentMode === 'design' && !isLocked) {
-                    div.ontouchstart = (e) => { if(e.target === div || e.target.tagName === 'SPAN') startAction(e, t, 'drag'); };
-                }
                 layer.appendChild(div);
             });
             document.getElementById('stat-occupied').innerText = count;
             document.getElementById('stat-percent').innerText = Math.round((count/Math.max(1,tables.length))*100) + '%';
         }
 
-        // --- MANEJO TÁCTIL UNIFICADO ---
         function startAction(e, t, type) {
-            e.stopPropagation();
             const touch = e.touches[0];
-            const startX = touch.clientX;
-            const startY = touch.clientY;
-            const startW = t.w;
-            const startH = t.h;
-            const startXPos = t.x;
-            const startYPos = t.y;
-            const startR = t.r || 0;
+            const startX = touch.clientX, startY = touch.clientY;
+            const startW = t.w, startH = t.h, startXPos = t.x, startYPos = t.y, startR = t.r || 0;
 
             const onMove = (me) => {
                 const mt = me.touches[0];
@@ -195,41 +168,29 @@
                     t.w = Math.max(40, startW + (mt.clientX - startX));
                     t.h = Math.max(40, startH + (mt.clientY - startY));
                 } else if (type === 'rotate') {
-                    const rect = document.querySelector('.selected-mesa').getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    const angle = Math.atan2(mt.clientY - centerY, mt.clientX - centerX);
-                    t.r = angle * (180 / Math.PI) + 90;
+                    const el = document.querySelector('.selected-mesa').getBoundingClientRect();
+                    const centerX = el.left + el.width/2, centerY = el.top + el.height/2;
+                    t.r = Math.atan2(mt.clientY - centerY, mt.clientX - centerX) * (180/Math.PI) + 90;
                 }
-                render();
+                // Actualización visual directa para mayor velocidad
+                const mesaEl = [...document.querySelectorAll('.mesa')].find(m => m.innerHTML.includes(t.label));
+                if(mesaEl) mesaEl.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px; transform: rotate(${t.r}deg); border: 3px solid #10b981;`;
             };
 
             const onEnd = () => {
                 window.removeEventListener('touchmove', onMove);
                 window.removeEventListener('touchend', onEnd);
-                saveData();
+                saveData(); render();
             };
-
             window.addEventListener('touchmove', onMove, { passive: false });
             window.addEventListener('touchend', onEnd);
         }
 
         function deselectAll(e) { if(e.target.id === 'main-scroll' || e.target.id === 'map-container') { selectedId = null; render(); } }
-
-        // --- SISTEMA BASE INTACTO ---
-        function addNewMesa() { tables.push({ id: Date.now(), label: "?", x: 80, y: 80, w: 70, h: 70, r: 0, status: 'free' }); render(); saveData(); }
-        function processImage(file) {
-            Tesseract.recognize(file, 'eng').then(({ data: { text } }) => {
-                const regex = /Tbl\s+(\d+)\s*\//g; let match;
-                tables.forEach(t => t.status = 'free');
-                while ((match = regex.exec(text)) !== null) {
-                    tables.forEach(t => { if(t.label === match[1]) t.status = 'occupied'; });
-                }
-                saveData(); render();
-            });
-        }
-        function saveAudit() { audits.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), insitu: parseInt(document.getElementById('note-insitu').value), micros: parseInt(document.getElementById('note-micros').value)||0 }); saveData(); setMode('history'); }
-        function renderHistory() { document.getElementById('history-list').innerHTML = audits.map(a => `<div class="bg-white p-6 rounded-3xl border flex justify-between items-center"><div><p class="text-[10px] text-emerald-500 font-bold">${a.date}</p><h4 class="font-black italic">POS: ${a.micros} | REAL: ${a.insitu}</h4></div></div>`).join(''); }
+        function addNewMesa() { tables.push({ id: Date.now(), label: "M", x: 100, y: 100, w: 80, h: 80, r: 0, status: 'free' }); render(); saveData(); }
+        function processImage(file) { Tesseract.recognize(file, 'eng').then(({ data: { text } }) => { const regex = /Tbl\s+(\d+)\s*\//g; let match; tables.forEach(t => t.status = 'free'); while ((match = regex.exec(text)) !== null) { tables.forEach(t => { if(t.label === match[1]) t.status = 'occupied'; }); } saveData(); render(); }); }
+        function saveAudit() { audits.unshift({ id: Date.now(), date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), insitu: parseInt(document.getElementById('note-insitu').innerText), micros: parseInt(document.getElementById('note-micros').value)||0 }); saveData(); setMode('history'); }
+        function renderHistory() { document.getElementById('history-list').innerHTML = audits.map(a => `<div class="bg-white p-6 rounded-3xl border flex justify-between items-center"><div><p class="text-[10px] text-emerald-500 font-bold">${a.date} ${a.time}</p><h4 class="font-black italic">POS: ${a.micros} | REAL: ${a.insitu}</h4></div></div>`).join(''); }
         function toggleLock() { isLocked = !isLocked; document.getElementById('lock-icon').className = isLocked ? 'fa-solid fa-lock text-red-500' : 'fa-solid fa-unlock text-emerald-400'; }
         function toggleFit() { const c = document.getElementById('map-container'); c.style.transform = (c.style.transform.includes('scale(1)') || !c.style.transform) ? `scale(${window.innerWidth/2000})` : 'scale(1)'; }
         function startTime() { setInterval(() => document.getElementById('current-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), 1000); }
