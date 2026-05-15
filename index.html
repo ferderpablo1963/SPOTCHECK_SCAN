@@ -16,7 +16,7 @@
         body { font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; background-color: #f8fafc; }
         #main-scroll { overflow: auto; position: relative; background-color: #e2e8f0; height: calc(100vh - 205px); }
         #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transform-origin: top left; transition: transform 0.2s; }
-        .mesa { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-size: 14px; border: 2px solid transparent; }
+        .mesa { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-size: 14px; border: 2px solid transparent; touch-action: none; }
         .mesa-free { background-color: #ffffff; color: #64748b; border-color: #e2e8f0; }
         .mesa-occupied { background-color: #000000 !important; color: #ffffff !important; border-color: #000000 !important; }
         .screen-overlay { position: fixed; inset: 0; top: 205px; background-color: #f8fafc; z-index: 100; display: none; overflow-y: auto; padding-bottom: 100px; }
@@ -82,19 +82,19 @@
 
     <div id="edit-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-[200] p-6">
         <div class="bg-white w-full max-w-sm rounded-[40px] p-8 space-y-4">
-            <h3 class="text-xs font-black uppercase text-slate-400">Editar Mesa</h3>
-            <input type="text" id="edit-label" placeholder="Nombre/Número" class="w-full h-14 bg-slate-100 rounded-2xl px-6 font-bold uppercase">
+            <h3 class="text-xs font-black uppercase text-slate-400">Propiedades de Mesa</h3>
+            <input type="text" id="edit-label" placeholder="Número" class="w-full h-14 bg-slate-100 rounded-2xl px-6 font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-500">
             <div class="grid grid-cols-2 gap-2">
-                <div><label class="text-[8px] font-black uppercase ml-2">Ancho</label><input type="number" id="edit-w" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold"></div>
-                <div><label class="text-[8px] font-black uppercase ml-2">Alto</label><input type="number" id="edit-h" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold"></div>
+                <div><label class="text-[8px] font-black uppercase ml-2">Ancho (px)</label><input type="number" id="edit-w" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold outline-none"></div>
+                <div><label class="text-[8px] font-black uppercase ml-2">Alto (px)</label><input type="number" id="edit-h" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold outline-none"></div>
             </div>
-            <div><label class="text-[8px] font-black uppercase ml-2">Rotación (Grados)</label><input type="number" id="edit-r" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold"></div>
+            <div><label class="text-[8px] font-black uppercase ml-2">Rotación (°)</label><input type="number" id="edit-r" class="w-full h-12 bg-slate-100 rounded-xl px-4 font-bold outline-none"></div>
             
             <div class="flex gap-2 pt-2">
                 <button onclick="closeModal('edit-modal')" class="flex-1 h-14 bg-slate-100 rounded-2xl font-black text-[10px] uppercase">Cerrar</button>
-                <button onclick="applyEdit()" class="flex-1 h-14 bg-slate-950 text-emerald-400 rounded-2xl font-black text-[10px] uppercase">Aplicar</button>
+                <button onclick="applyEdit()" class="flex-1 h-14 bg-slate-950 text-emerald-400 rounded-2xl font-black text-[10px] uppercase">Guardar</button>
             </div>
-            <button onclick="deleteMesa()" class="w-full text-red-500 font-black text-[10px] uppercase pt-2">Eliminar Mesa</button>
+            <button onclick="deleteMesa()" class="w-full text-red-500 font-black text-[10px] uppercase pt-2">Eliminar Definitivamente</button>
         </div>
     </div>
 
@@ -103,15 +103,15 @@
             <h3 class="text-sm font-black uppercase text-center italic">Cierre de Auditoría</h3>
             <div class="grid grid-cols-2 gap-4">
                 <div class="bg-slate-100 p-4 rounded-2xl text-center">
-                    <span class="text-[8px] font-black uppercase text-slate-400">Mesas In Situ</span>
+                    <span class="text-[8px] font-black uppercase text-slate-400">In Situ</span>
                     <input id="note-insitu" type="number" readonly class="w-full bg-transparent text-center font-black text-2xl outline-none">
                 </div>
                 <div class="bg-white border-2 border-emerald-500 p-4 rounded-2xl text-center">
-                    <span class="text-[8px] font-black uppercase text-emerald-600">Mesas POS</span>
+                    <span class="text-[8px] font-black uppercase text-emerald-600">POS</span>
                     <input id="note-micros" type="number" placeholder="0" class="w-full bg-transparent text-center font-black text-2xl outline-none">
                 </div>
             </div>
-            <button onclick="saveAudit()" class="w-full h-16 bg-slate-950 text-emerald-400 rounded-2xl font-black uppercase text-xs shadow-xl">Guardar en Historial</button>
+            <button onclick="saveAudit()" class="w-full h-16 bg-slate-950 text-emerald-400 rounded-2xl font-black uppercase text-xs shadow-xl">Guardar Reporte</button>
         </div>
     </div>
 
@@ -119,23 +119,20 @@
         <div id="history-list" class="space-y-4"></div>
     </div>
 
-    <div id="toast" class="bg-slate-950 text-white px-8 py-4 rounded-3xl font-bold text-xs shadow-2xl flex items-center gap-3 border border-slate-800">
-        <span id="toast-msg">Mensaje</span>
+    <div id="toast" class="bg-slate-950 text-white px-8 py-4 rounded-3xl font-bold text-xs shadow-2xl z-[300]">
+        <span id="toast-msg"></span>
     </div>
 
     <script>
-        const DB_PREFIX = 'spotcheck_1225_v4';
+        const DB_PREFIX = 'spotcheck_1225_v5';
         let tables = JSON.parse(localStorage.getItem(`${DB_PREFIX}_tables`)) || [];
         let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
         let isLocked = true;
         let currentMode = 'audit';
-        let isFitted = false;
         let selectedMesaId = null;
 
         function init() {
-            if (tables.length === 0) {
-                tables = [{ id: Date.now(), label: "1", x: 100, y: 100, w: 70, h: 70, r: 0, status: 'free' }];
-            }
+            if (tables.length === 0) tables = [{ id: Date.now(), label: "1", x: 100, y: 100, w: 70, h: 70, r: 0, status: 'free' }];
             render();
             startTime();
         }
@@ -147,12 +144,10 @@
                 btn.classList.add('text-slate-400');
             });
             document.getElementById(`nav-${m}`).classList.add('btn-active', 'text-slate-900');
-
             document.getElementById('main-scroll').style.display = (m === 'audit' || m === 'design') ? 'block' : 'none';
             document.getElementById('btn-add').classList.toggle('hidden', m !== 'design');
             document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
             document.getElementById('history-screen').classList.toggle('active', m === 'history');
-
             if (m === 'notes') document.getElementById('note-insitu').value = tables.filter(t => t.status === 'occupied').length;
             if (m === 'history') renderHistory();
             render();
@@ -161,14 +156,21 @@
         function render() {
             const layer = document.getElementById('mesas-layer');
             layer.innerHTML = '';
-            let occupied = 0;
+            let count = 0;
             tables.forEach(t => {
-                if (t.status === 'occupied') occupied++;
+                if (t.status === 'occupied') count++;
                 const div = document.createElement('div');
                 div.className = `mesa ${t.status === 'occupied' ? 'mesa-occupied' : 'mesa-free'}`;
                 div.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px; transform: rotate(${t.r || 0}deg);`;
                 div.innerText = t.label;
                 
+                div.onmousedown = (e) => {
+                    if (currentMode === 'design' && !isLocked) startDrag(e, t);
+                };
+                div.ontouchstart = (e) => {
+                    if (currentMode === 'design' && !isLocked) startDrag(e, t);
+                };
+
                 div.onclick = (e) => {
                     if (currentMode === 'audit') {
                         t.status = (t.status === 'free' ? 'occupied' : 'free');
@@ -177,44 +179,47 @@
                         openEditModal(t);
                     }
                 };
-
-                if (currentMode === 'design' && !isLocked) {
-                    div.onmousedown = (e) => startDrag(e, t);
-                    div.ontouchstart = (e) => startDrag(e, t);
-                }
                 layer.appendChild(div);
             });
-            document.getElementById('stat-occupied').innerText = occupied;
-            document.getElementById('stat-percent').innerText = Math.round((occupied/tables.length)*100) + '%';
+            document.getElementById('stat-occupied').innerText = count;
+            document.getElementById('stat-percent').innerText = Math.round((count/Math.max(1,tables.length))*100) + '%';
         }
 
         function startDrag(e, t) {
-            e.preventDefault();
             const ev = e.touches ? e.touches[0] : e;
-            let sx = ev.clientX, sy = ev.clientY, ox = t.x, oy = t.y;
+            let startX = ev.clientX;
+            let startY = ev.clientY;
+            let origX = t.x;
+            let origY = t.y;
+
             const move = (me) => {
                 const mev = me.touches ? me.touches[0] : me;
-                t.x = ox + (mev.clientX - sx);
-                t.y = oy + (mev.clientY - sy);
-                render();
+                t.x = origX + (mev.clientX - startX);
+                t.y = origY + (mev.clientY - startY);
+                // No llamamos a render completo para suavidad, solo movemos el elemento
+                const el = [...document.querySelectorAll('.mesa')].find(d => d.innerText === t.label);
+                if(el) { el.style.left = t.x + 'px'; el.style.top = t.y + 'px'; }
             };
+
             const end = () => {
                 window.removeEventListener('mousemove', move);
                 window.removeEventListener('mouseup', end);
                 window.removeEventListener('touchmove', move);
                 window.removeEventListener('touchend', end);
                 saveData();
+                render(); // Al soltar, sincronizamos todo
             };
-            window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
-            window.addEventListener('touchmove', move, {passive:false}); window.addEventListener('touchend', end);
+
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', end);
+            window.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('touchend', end);
         }
 
-        // --- FUNCIONES DISEÑO ---
         function addNewMesa() {
-            const newMesa = { id: Date.now(), label: "M", x: 50, y: 50, w: 70, h: 70, r: 0, status: 'free' };
-            tables.push(newMesa);
+            const id = Date.now();
+            tables.push({ id, label: "NEW", x: 100, y: 100, w: 70, h: 70, r: 0, status: 'free' });
             saveData(); render();
-            showToast("Mesa agregada");
         }
 
         function openEditModal(t) {
@@ -239,7 +244,7 @@
         }
 
         function deleteMesa() {
-            if (confirm("¿Eliminar esta mesa?")) {
+            if (confirm("¿Eliminar mesa?")) {
                 tables = tables.filter(x => x.id !== selectedMesaId);
                 saveData(); render(); closeModal('edit-modal');
             }
@@ -247,7 +252,6 @@
 
         function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
 
-        // --- SISTEMA ---
         function processImage(file) {
             if (!file) return;
             const ocrText = document.querySelector('#btn-ocr span');
@@ -260,7 +264,7 @@
                     tables.forEach(t => { if(t.label === match[1]) { t.status = 'occupied'; found++; } });
                 }
                 saveData(); render();
-                showToast(`Detectadas ${found} mesas`);
+                showToast(`Sincronizado: ${found} mesas`);
             }).finally(() => { ocrText.innerText = "SCAN"; });
         }
 
@@ -270,12 +274,12 @@
         }
 
         function renderHistory() {
-            document.getElementById('history-list').innerHTML = audits.map(a => `<div class="bg-white p-6 rounded-3xl border mb-4 flex justify-between items-center shadow-sm"><div><p class="text-[10px] font-black text-emerald-50">${a.date} - ${a.time}</p><h4 class="text-xl font-black italic">M: ${a.micros} | I: ${a.insitu}</h4></div><button onclick="deleteAudit(${a.id})" class="text-red-200"><i class="fa-solid fa-trash"></i></button></div>`).join('') || '<p class="text-center py-20 opacity-20">VACÍO</p>';
+            document.getElementById('history-list').innerHTML = audits.map(a => `<div class="bg-white p-6 rounded-3xl border mb-4 flex justify-between items-center"><div><p class="text-[10px] font-black text-emerald-500">${a.date} - ${a.time}</p><h4 class="text-xl font-black italic">POS: ${a.micros} | REAL: ${a.insitu}</h4></div><button onclick="deleteAudit(${a.id})" class="text-red-200"><i class="fa-solid fa-trash"></i></button></div>`).join('') || '<p class="text-center py-20 opacity-20 uppercase font-black">Vacío</p>';
         }
 
         function deleteAudit(id) { if(confirm("¿Borrar?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
         function toggleLock() { isLocked = !isLocked; document.getElementById('lock-icon').className = isLocked ? 'fa-solid fa-lock text-red-500' : 'fa-solid fa-unlock text-emerald-400'; }
-        function toggleFit() { isFitted = !isFitted; document.getElementById('map-container').style.transform = isFitted ? `scale(${window.innerWidth/2000})` : 'scale(1)'; }
+        function toggleFit() { const c = document.getElementById('map-container'); c.style.transform = (c.style.transform === 'scale(1)' || !c.style.transform) ? `scale(${window.innerWidth/2000})` : 'scale(1)'; }
         function startTime() { setInterval(() => document.getElementById('current-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), 1000); }
         function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
         function saveData() { localStorage.setItem(`${DB_PREFIX}_tables`, JSON.stringify(tables)); localStorage.setItem(`${DB_PREFIX}_audits`, JSON.stringify(audits)); }
