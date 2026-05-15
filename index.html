@@ -1,61 +1,299 @@
-// Busca esta función dentro de tu etiqueta <script> y reemplázala por esta versión:
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#020617">
+    
+    <title>SPOT CHECK - CONTROL PROFESIONAL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; background-color: #f8fafc; }
+        input, textarea { user-select: text !important; -webkit-user-select: text !important; touch-action: auto !important; }
+        #main-scroll { overflow: auto; position: relative; background-color: #e2e8f0; }
+        #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: top left; }
+        .design-grid { background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 30px 30px; }
+        .mesa { position: absolute; z-index: 10; display: flex; align-items: center; justify-content: center; font-weight: 800; border-radius: 12px; transition: all 0.2s; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); user-select: none; font-size: 14px; text-align: center; border: 2px solid transparent; }
+        .mesa-free { background-color: #ffffff; color: #64748b; border-color: #e2e8f0; }
+        .mesa-occupied { background-color: #000000 !important; color: #ffffff !important; border-color: #000000 !important; }
+        .screen-overlay { position: fixed; left: 0; right: 0; bottom: 0; top: 205px; background-color: #f8fafc; z-index: 30; overflow-y: auto; display: none; padding-bottom: 140px; }
+        .screen-overlay.active { display: flex; }
+        #toast { position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%) translateY(100px); transition: transform 0.3s; z-index: 1000; }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        .btn-active { background-color: white !important; color: #0f172a !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden select-none text-slate-900">
 
-function processImage(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-            const ocrIcon = document.querySelector('#btn-ocr i');
-            const ocrText = document.querySelector('#btn-ocr span');
+    <header class="bg-slate-950 text-white p-5 pt-12 flex justify-between items-center shrink-0 z-[60] shadow-2xl">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center transform -rotate-3">
+                <i class="fa-solid fa-layer-group text-slate-950 text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-xl italic leading-none tracking-tighter">SPOT CHECK</h1>
+                <p class="text-[8px] text-slate-400 font-black uppercase mt-1">LOBBY BAR 1225</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="document.getElementById('ocr-camera-input').click()" id="btn-ocr" class="h-12 px-4 bg-slate-900 rounded-2xl flex items-center gap-2 border border-slate-800 active:scale-90 transition-all">
+                <i class="fa-solid fa-camera text-xs text-emerald-400"></i>
+                <span class="text-[10px] font-black uppercase">Scan</span>
+            </button>
+            <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" class="hidden" onchange="processImage(this.files[0])">
             
-            ocrIcon.className = "fa-solid fa-spinner animate-spin text-xs";
-            ocrText.innerText = "LEYENDO...";
+            <button onclick="toggleFit()" id="btn-fit" class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-800"><i class="fa-solid fa-expand text-xs"></i></button>
+            <button onclick="toggleLock()" class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center border border-slate-800"><i class="fa-solid fa-lock text-red-500" id="lock-icon"></i></button>
+        </div>
+    </header>
 
-            Tesseract.recognize(img, 'eng', {
-                logger: m => console.log(m)
-            }).then(({ data: { text } }) => {
-                console.log("Texto detectado:", text);
+    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-50 shrink-0">
+        <div class="flex gap-6">
+            <div><span class="text-[8px] font-black text-slate-400 uppercase block">In Situ</span><span id="stat-occupied" class="text-xl font-black italic">0</span></div>
+            <div class="border-l border-slate-100 pl-6">
+                <span class="text-[8px] font-black text-slate-400 uppercase block">Ratio</span>
+                <span id="stat-percent" class="text-xl font-black text-emerald-600 italic">0%</span>
+            </div>
+        </div>
+        <div class="text-right">
+            <p id="current-time" class="text-[10px] font-black uppercase">00:00</p>
+        </div>
+    </div>
 
-                // 1. LIMPIEZA PREVIA: Poner todo en blanco antes de marcar lo nuevo
-                tables.forEach(t => t.status = 'free');
+    <nav class="px-4 py-3 bg-slate-50 flex gap-2 border-b border-slate-200 shrink-0">
+        <div class="flex w-full bg-slate-200/50 p-1 rounded-2xl">
+            <button onclick="setMode('audit')" id="nav-audit" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase btn-active">Auditar</button>
+            <button onclick="setMode('design')" id="nav-design" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase text-slate-400">Diseño</button>
+            <button onclick="setMode('notes')" id="nav-notes" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase text-slate-400">Reporte</button>
+            <button onclick="setMode('history')" id="nav-history" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase text-slate-400">Historial</button>
+        </div>
+    </nav>
 
-                // 2. ALGORITMO DE CAPTURA ESPECÍFICO
-                // Busca el patrón: Tbl (espacio opcional) (número) /
-                const regex = /Tbl\s+(\d+)\s*\//g;
-                let match;
-                let matchedCount = 0;
-                const detectedNumbers = [];
+    <main class="flex-1 overflow-hidden relative" id="main-scroll">
+        <div id="map-container"><div id="mesas-layer" class="w-full h-full relative"></div></div>
+        <button id="btn-add-mesa" onclick="openModal('add-modal')" class="hidden fixed right-8 bottom-32 w-16 h-16 bg-slate-950 text-emerald-400 rounded-full shadow-2xl items-center justify-center z-[80] border-4 border-white"><i class="fa-solid fa-plus text-xl"></i></button>
+    </main>
 
-                while ((match = regex.exec(text)) !== null) {
-                    detectedNumbers.push(match[1]); // Captura el número inmediatamente después de Tbl
+    <div id="notes-screen" class="screen-overlay flex-col p-6">
+        <div class="bg-white p-8 rounded-[40px] shadow-sm border max-w-md mx-auto w-full space-y-6">
+            <h3 class="text-sm font-black uppercase text-center italic">Cierre de Auditoría</h3>
+            <div class="grid grid-cols-2 gap-4">
+                <input id="note-insitu" type="number" readonly class="w-full h-16 bg-slate-100 rounded-2xl text-center font-black text-xl">
+                <input id="note-micros" type="number" placeholder="POS" class="w-full h-16 bg-white border-2 border-emerald-500 rounded-2xl text-center font-black text-xl outline-none">
+            </div>
+            <button onclick="saveAudit()" class="w-full h-16 bg-slate-950 text-white rounded-2xl font-black uppercase text-xs">Guardar Registro</button>
+        </div>
+    </div>
+
+    <div id="history-screen" class="screen-overlay flex-col p-6">
+        <div id="history-list" class="space-y-4"></div>
+    </div>
+
+    <div id="add-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center z-[200] p-6">
+        <div class="bg-white w-full max-w-sm rounded-[40px] p-8">
+            <input type="text" id="new-label" placeholder="ID MESA" class="w-full h-14 bg-slate-100 rounded-2xl px-6 font-bold mb-4 uppercase">
+            <div class="flex gap-3">
+                <button onclick="closeModal('add-modal')" class="flex-1 h-14 bg-slate-100 rounded-2xl font-black uppercase text-[10px]">Cerrar</button>
+                <button onclick="confirmMesa()" class="flex-1 h-14 bg-slate-950 text-emerald-400 rounded-2xl font-black uppercase text-[10px]">Aceptar</button>
+            </div>
+            <button id="btn-delete-mesa" onclick="deleteMesa()" class="w-full mt-4 text-red-500 font-black text-[10px] uppercase hidden">Eliminar</button>
+        </div>
+    </div>
+
+    <footer class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-xl border-t flex gap-3 z-[100]">
+        <button onclick="clearCurrentAudit()" class="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-rotate-left"></i></button>
+        <button onclick="setMode('notes')" class="flex-1 bg-slate-950 text-emerald-400 h-14 rounded-3xl font-black uppercase text-[10px] flex items-center justify-center gap-2 shadow-2xl">FINALIZAR CONTROL</button>
+    </footer>
+
+    <div id="toast" class="bg-slate-950 text-white px-8 py-4 rounded-3xl font-bold text-xs shadow-2xl flex items-center gap-3 border border-slate-800">
+        <span id="toast-msg">Mensaje</span>
+    </div>
+
+    <script>
+        const DB_PREFIX = 'spotcheck_1225_final';
+        let tables = JSON.parse(localStorage.getItem(`${DB_PREFIX}_tables`)) || [];
+        let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
+        let isLocked = true;
+        let currentMode = 'audit';
+        let editingMesaId = null;
+        let isFitted = false;
+
+        function init() {
+            if (tables.length === 0) {
+                tables = [{ id: 1, label: '1', x: 800, y: 100, w: 70, h: 70, status: 'free' }];
+            }
+            render();
+            startTime();
+        }
+
+        // --- LÓGICA DE ESCANEO (SCAN) ---
+        function processImage(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const ocrIcon = document.querySelector('#btn-ocr i');
+                    const ocrText = document.querySelector('#btn-ocr span');
+                    ocrIcon.className = "fa-solid fa-spinner animate-spin text-xs";
+                    ocrText.innerText = "LEYENDO...";
+
+                    // 1. LIMPIEZA: Poner todo en blanco antes de marcar lo nuevo
+                    tables.forEach(t => t.status = 'free');
+
+                    Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
+                        console.log("OCR:", text);
+                        // Patrón: Tbl [espacio] (numero) /
+                        const regex = /Tbl\s+(\d+)\s*\//g;
+                        let match;
+                        let matchedCount = 0;
+                        const detected = [];
+
+                        while ((match = regex.exec(text)) !== null) {
+                            detected.push(match[1]);
+                        }
+
+                        tables.forEach(t => {
+                            if (detected.includes(t.label)) {
+                                t.status = 'occupied';
+                                matchedCount++;
+                            }
+                        });
+
+                        saveData();
+                        render();
+                        showToast(matchedCount > 0 ? `Detectadas ${matchedCount} mesas` : "No se hallaron mesas Tbl # /");
+                    }).finally(() => {
+                        ocrIcon.className = "fa-solid fa-camera text-xs";
+                        ocrText.innerText = "SCAN";
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function render() {
+            const layer = document.getElementById('mesas-layer');
+            layer.innerHTML = '';
+            let count = 0;
+            tables.forEach(t => {
+                if (t.status === 'occupied') count++;
+                const div = document.createElement('div');
+                div.className = `mesa ${t.status === 'occupied' ? 'mesa-occupied' : 'mesa-free'}`;
+                div.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px;`;
+                div.innerText = t.label;
+                div.onclick = () => {
+                    if (currentMode === 'audit') { t.status = (t.status === 'free' ? 'occupied' : 'free'); saveData(); render(); }
+                    else if (currentMode === 'design') openEditMesa(t);
+                };
+                if (currentMode === 'design') {
+                    div.onmousedown = (e) => startDrag(e, t);
+                    div.ontouchstart = (e) => startDrag(e, t);
                 }
-
-                // 3. PINTAR MESAS ENCONTRADAS
-                tables.forEach(t => {
-                    if (detectedNumbers.includes(t.label)) {
-                        t.status = 'occupied';
-                        matchedCount++;
-                    }
-                });
-
-                if (matchedCount > 0) {
-                    showToast(`Sincronizado: ${matchedCount} mesas detectadas`);
-                    saveData();
-                    render();
-                } else {
-                    showToast("No se encontraron mesas con el formato Tbl # /");
-                    render(); // Renderiza para mostrar la limpieza
-                }
-            }).catch(err => {
-                console.error("Error OCR:", err);
-                showToast("Error al procesar la imagen");
-            }).finally(() => {
-                ocrIcon.className = "fa-solid fa-camera text-xs";
-                ocrText.innerText = "SCAN";
-                document.getElementById('ocr-camera-input').value = "";
+                layer.appendChild(div);
             });
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-}
+            document.getElementById('stat-occupied').innerText = count;
+            document.getElementById('note-insitu').value = count;
+            document.getElementById('stat-percent').innerText = Math.round((count/tables.length)*100) + '%';
+        }
+
+        // --- EXPORTACIÓN REPORTE ---
+        function generarCuerpo(a) {
+            return `==================================================\n       REPORTE DE AUDITORÍA SPOT CHECK\n==================================================\nFECHA: ${a.date}\nHORA: ${a.time}\nSECTOR EVALUADO: Salón Principal\nAUDITOR: AUDITOR\n--------------------------------------------------\nMESAS IN SITU: ${a.insitu}\nMESAS POS:     ${a.micros}\nDIFERENCIA:    ${a.diff}\n--------------------------------------------------\nMESAS ACTIVAS:\n${a.details ? a.details.split(', ').map(l => `  - Mesa ${l}: [OCUPADA]`).join('\n') : '  - Ninguna'}\n==================================================`;
+        }
+
+        function downloadAuditTXT(id) {
+            const a = audits.find(x => x.id === id);
+            const blob = new Blob([generarCuerpo(a)], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `SPOTCHECK_${a.date.replace(/\//g, '-')}.txt`;
+            link.click();
+        }
+
+        function downloadAuditPDF(id) {
+            const a = audits.find(x => x.id === id);
+            const win = window.open('', '_blank');
+            win.document.write(`<html><body style="font-family:monospace;white-space:pre;padding:20px;">${generarCuerpo(a)}</body></html>`);
+            win.document.close();
+            win.print();
+        }
+
+        function saveAudit() {
+            const insitu = parseInt(document.getElementById('note-insitu').value);
+            const micros = parseInt(document.getElementById('note-micros').value) || 0;
+            const audit = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString(),
+                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+                insitu, micros, diff: insitu - micros,
+                details: tables.filter(t => t.status === 'occupied').map(t => t.label).join(', ')
+            };
+            audits.unshift(audit);
+            tables.forEach(t => t.status = 'free');
+            saveData();
+            showToast("Guardado");
+            setMode('history');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            container.innerHTML = audits.map(a => `
+                <div class="bg-white p-6 rounded-[32px] border flex justify-between items-center mb-4">
+                    <div><p class="text-[10px] font-black text-emerald-500">${a.date} • ${a.time}</p><h4 class="text-xl font-black italic">${a.insitu} vs ${a.micros}</h4></div>
+                    <div class="flex gap-2">
+                        <button onclick="downloadAuditTXT(${a.id})" class="w-10 h-10 bg-slate-50 rounded-xl border"><i class="fa-solid fa-file-lines"></i></button>
+                        <button onclick="downloadAuditPDF(${a.id})" class="w-10 h-10 bg-slate-50 text-red-500 rounded-xl border"><i class="fa-solid fa-file-pdf"></i></button>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center opacity-20 py-20">VACÍO</p>';
+        }
+
+        // --- SISTEMA BASE ---
+        function setMode(m) {
+            currentMode = m;
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('btn-active', 'text-slate-900'));
+            document.getElementById(`nav-${m}`).classList.add('btn-active', 'text-slate-900');
+            document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
+            document.getElementById('history-screen').classList.toggle('active', m === 'history');
+            if (m === 'history') renderHistory();
+            render();
+        }
+
+        function startDrag(e, t) {
+            const ev = e.touches ? e.touches[0] : e;
+            let sx = ev.clientX, sy = ev.clientY, ox = t.x, oy = t.y;
+            const move = (me) => {
+                const mev = me.touches ? me.touches[0] : me;
+                t.x = ox + (mev.clientX - sx); t.y = oy + (mev.clientY - sy); render();
+            };
+            const end = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', end); window.removeEventListener('touchmove', move); window.removeEventListener('touchend', end); saveData(); };
+            window.addEventListener('mousemove', move); window.addEventListener('mouseup', end);
+            window.addEventListener('touchmove', move, {passive:false}); window.addEventListener('touchend', end);
+        }
+
+        function toggleFit() {
+            const c = document.getElementById('map-container');
+            isFitted = !isFitted;
+            c.style.transform = isFitted ? `scale(${Math.min(window.innerWidth/2000, (window.innerHeight-205)/1200)*0.95})` : 'scale(1)';
+        }
+
+        function toggleLock() { isLocked = !isLocked; document.getElementById('lock-icon').className = isLocked ? 'fa-solid fa-lock text-red-500' : 'fa-solid fa-unlock text-emerald-400'; }
+        function startTime() { setInterval(() => document.getElementById('current-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), 1000); }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        function saveData() { localStorage.setItem(`${DB_PREFIX}_tables`, JSON.stringify(tables)); localStorage.setItem(`${DB_PREFIX}_audits`, JSON.stringify(audits)); }
+        function openModal(id) { document.getElementById(id).classList.replace('hidden', 'flex'); }
+        function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
+        function clearCurrentAudit() { if(confirm("¿Resetear?")) { tables.forEach(t => t.status = 'free'); render(); } }
+
+        init();
+    </script>
+</body>
+</html>
