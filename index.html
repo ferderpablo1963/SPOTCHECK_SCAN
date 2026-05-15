@@ -1,0 +1,61 @@
+// Busca esta función dentro de tu etiqueta <script> y reemplázala por esta versión:
+
+function processImage(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const ocrIcon = document.querySelector('#btn-ocr i');
+            const ocrText = document.querySelector('#btn-ocr span');
+            
+            ocrIcon.className = "fa-solid fa-spinner animate-spin text-xs";
+            ocrText.innerText = "LEYENDO...";
+
+            Tesseract.recognize(img, 'eng', {
+                logger: m => console.log(m)
+            }).then(({ data: { text } }) => {
+                console.log("Texto detectado:", text);
+
+                // 1. LIMPIEZA PREVIA: Poner todo en blanco antes de marcar lo nuevo
+                tables.forEach(t => t.status = 'free');
+
+                // 2. ALGORITMO DE CAPTURA ESPECÍFICO
+                // Busca el patrón: Tbl (espacio opcional) (número) /
+                const regex = /Tbl\s+(\d+)\s*\//g;
+                let match;
+                let matchedCount = 0;
+                const detectedNumbers = [];
+
+                while ((match = regex.exec(text)) !== null) {
+                    detectedNumbers.push(match[1]); // Captura el número inmediatamente después de Tbl
+                }
+
+                // 3. PINTAR MESAS ENCONTRADAS
+                tables.forEach(t => {
+                    if (detectedNumbers.includes(t.label)) {
+                        t.status = 'occupied';
+                        matchedCount++;
+                    }
+                });
+
+                if (matchedCount > 0) {
+                    showToast(`Sincronizado: ${matchedCount} mesas detectadas`);
+                    saveData();
+                    render();
+                } else {
+                    showToast("No se encontraron mesas con el formato Tbl # /");
+                    render(); // Renderiza para mostrar la limpieza
+                }
+            }).catch(err => {
+                console.error("Error OCR:", err);
+                showToast("Error al procesar la imagen");
+            }).finally(() => {
+                ocrIcon.className = "fa-solid fa-camera text-xs";
+                ocrText.innerText = "SCAN";
+                document.getElementById('ocr-camera-input').value = "";
+            });
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
