@@ -456,7 +456,7 @@
         }
 
         // =========================================================================
-        // ALGORITMO OCR INTEGRADO: BUSCA LA EXPRESIÓN "Tbl X/" EXTRAÍDA DE TU CAPTURA
+        // ALGORITMO OCR INTEGRADO: BUSCA EL PATRÓN "Tbl X/" EXTRAÍDO DE TU CAPTURA
         // =========================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
@@ -474,23 +474,23 @@
                 img.onload = function() {
                     Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
                         
-                        // Normalizaciones comunes en lecturas OCR de pantallas POS
+                        // Normalizaciones comunes de OCR para pantallas POS
                         let processedText = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
                         
-                        // Captura los dígitos que se encuentran estrictamente después de "Tbl " y antes de la barra "/"
+                        // Captura los números que están inmediatamente después de "Tbl " y antes de la barra "/"
                         const regex = /Tbl\s+(\d+)\//g;
                         
                         let match;
                         let detectedNumbers = [];
                         
                         while ((match = regex.exec(processedText)) !== null) {
-                            detectedNumbers.push(match[1]); // Guarda los números (ej: 90, 10, 41, 8, 22)
+                            detectedNumbers.push(match[1]); // Guarda números (ej: 90, 10, 41, 8, 22)
                         }
 
                         let matchedCount = 0;
                         tables.forEach(t => {
                             if (detectedNumbers.includes(t.label)) {
-                                t.status = 'occupied'; // Las pinta de negro si coinciden con las del POS
+                                t.status = 'occupied'; // Pinta de negro
                                 matchedCount++;
                             } else {
                                 t.status = 'free'; // Resetea las demás a blanco
@@ -502,7 +502,7 @@
                             saveData();
                             render();
                         } else {
-                            // Algoritmo de respaldo si el OCR omite la palabra Tbl por reflejos
+                            // Respaldo por si lee los números pero no detecta la palabra "Tbl" debido a brillo
                             const fallbackRegex = /(\d+)\//g;
                             while ((match = fallbackRegex.exec(processedText)) !== null) {
                                 detectedNumbers.push(match[1]);
@@ -630,6 +630,7 @@
         function deleteAudit(id) { if(confirm("¿Eliminar este reporte?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
         function clearHistory() { if(confirm("¿Seguro de borrar TODO el historial?")) { audits = []; saveData(); renderHistory(); } }
         
+        // REESTABLECIDAS A TU LÓGICA DE ESTILOS ORIGINAL
         function openModal(id) { 
             document.getElementById(id).style.display = 'flex';
         }
@@ -728,3 +729,49 @@
             const dom = document.getElementById(`table-dom-${id}`);
             const rect = dom.getBoundingClientRect();
             const center = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+            startAngle = Math.atan2(e.clientY - center.y, e.clientX - center.x) * (180 / Math.PI) - t.r;
+        }
+
+        function setupGlobalMoveEvents() {
+            window.addEventListener('pointermove', (e) => {
+                if(!selectedTableId || isLocked) return;
+                const t = tables.find(x => x.id === selectedTableId);
+                const rect = document.getElementById('map-container').getBoundingClientRect();
+                const scale = rect.width / 2000;
+
+                if (isDragging) {
+                    t.x = startLeft + (e.clientX - startX) / scale;
+                    t.y = startTop + (e.clientY - startY) / scale;
+                } else if (isResizing) {
+                    t.w = Math.max(35, startW + (e.clientX - startX) / scale);
+                    t.h = Math.max(35, startH + (e.clientY - startY) / scale);
+                } else if (isRotating) {
+                    const dom = document.getElementById(`table-dom-${selectedTableId}`);
+                    const dRect = dom.getBoundingClientRect();
+                    const center = { x: dRect.left + dRect.width/2, y: dRect.top + dRect.height/2 };
+                    const currentAngle = Math.atan2(e.clientY - center.y, e.clientX - center.x) * (180 / Math.PI);
+                    t.r = Math.round(currentAngle - startAngle);
+                }
+                
+                if(isDragging || isResizing || isRotating) {
+                    const dom = document.getElementById(`table-dom-${t.id}`);
+                    if(dom) {
+                        dom.style.left = `${t.x}px`; dom.style.top = `${t.y}px`;
+                        dom.style.width = `${t.w}px`; dom.style.height = `${t.h}px`;
+                        dom.style.transform = `rotate(${t.r}deg)`;
+                    }
+                }
+            });
+
+            window.addEventListener('pointerup', () => {
+                if(isDragging || isResizing || isRotating) {
+                    isDragging = false; isResizing = false; isRotating = false;
+                    saveData();
+                }
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
