@@ -2,81 +2,33 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#020617">
     
-    <title>SPOT CHECK - CONTROL PROFESIONAL</title>
+    <title>SPOT CHECK - LOBBY 1225</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
     <style>
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            overscroll-behavior: none; 
-            -webkit-tap-highlight-color: transparent; 
-            background-color: #f8fafc;
-        }
-        
-        /* HABILITAR ENTRADA DE TEXTO Y SELECCIÓN EN CAMPOS DE FORMULARIO */
-        input, textarea {
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            touch-action: auto !important;
-        }
-        
-        #main-scroll {
-            overflow: auto;
-            position: relative;
-            background-color: #e2e8f0;
-        }
-
-        #map-container { 
-            height: 1200px; 
-            width: 2000px;
-            position: relative;
-            background-color: #ffffff;
-            transition: transform 0.2s ease;
-            transform-origin: top left;
-        }
-
-        .mesa {
-            position: absolute;
-            border-radius: 9999px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-            transform: translate(-50%, -50%);
-        }
-
+        body { font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; background-color: #f8fafc; }
+        #main-scroll { overflow: auto; position: relative; background-color: #e2e8f0; height: calc(100vh - 205px); }
+        #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transition: transform 0.2s ease; transform-origin: top left; }
+        .mesa { position: absolute; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: pointer; transition: all 0.2s; user-select: none; transform: translate(-50%, -50%); }
         .mesa-free { background-color: #ffffff; color: #64748b; border: 3px solid #e2e8f0; }
         .mesa-occupied { background-color: #020617 !important; color: #ffffff !important; border: 3px solid #020617; }
         .mesa-indet { background-color: #ef4444 !important; color: #ffffff !important; border: 3px solid #ef4444; }
-
-        /* Estilos del Toast Animado */
-        #toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%) translateY(100px);
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 1000;
-        }
+        .screen-overlay { position: fixed; left: 0; right: 0; bottom: 0; top: 205px; background-color: #f8fafc; z-index: 100; overflow-y: auto; display: none; }
+        .screen-overlay.active { display: flex; flex-direction: column; }
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; }
         #toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-900 select-none">
 
-    <header class="bg-slate-950 text-white p-6 pt-12 flex justify-between items-center shrink-0 z-50 border-b border-slate-900">
+    <header class="bg-slate-950 text-white p-6 pt-12 flex justify-between items-center shrink-0 z-[110] border-b border-slate-900">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                 <i class="fa-solid fa-layer-group text-slate-950 text-2xl"></i>
@@ -86,23 +38,16 @@
                 <p class="text-[9px] text-slate-400 font-black tracking-widest uppercase">1225 LOBBY BAR</p>
             </div>
         </div>
-        
         <button onclick="toggleLock()" id="lock-btn" class="flex items-center gap-3 px-5 py-2.5 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
-            <span id="lock-text" class="text-[10px] font-black uppercase text-emerald-500 tracking-wider">EDICIÓN</span>
+            <span id="lock-text" class="text-[10px] font-black uppercase text-slate-400 tracking-wider">EDICIÓN</span>
             <i class="fa-solid fa-unlock text-emerald-400" id="lock-icon"></i>
         </button>
     </header>
 
-    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-40 shrink-0 shadow-sm">
+    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-50 shrink-0 shadow-sm">
         <div class="flex gap-6">
-            <div>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Mesa In Situ</p>
-                <p id="stat-occupied" class="text-xl font-black text-slate-950">0</p>
-            </div>
-            <div>
-                <p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Ocupación</p>
-                <p id="stat-percent" class="text-xl font-black text-emerald-600">0%</p>
-            </div>
+            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Mesa In Situ</p><p id="stat-occupied" class="text-xl font-black text-slate-950">0</p></div>
+            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Ocupación</p><p id="stat-percent" class="text-xl font-black text-emerald-600">0%</p></div>
         </div>
         <div class="flex items-center gap-3">
             <label class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer flex items-center gap-2 shadow-md shadow-emerald-500/10 active:scale-95 transition-transform">
@@ -110,9 +55,14 @@
                 <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleOCR(this)">
             </label>
             <button onclick="toggleFit()" class="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase active:scale-95 transition-transform">FIT</button>
-            <button onclick="openModal('menu-modal')" class="bg-slate-100 text-slate-700 p-2.5 rounded-xl active:scale-95 transition-transform"><i class="fa-solid fa-ellipsis-v"></i></button>
         </div>
     </div>
+
+    <nav class="px-6 py-3 bg-slate-50 flex gap-2 z-40 border-b border-slate-200 shrink-0">
+        <button onclick="setMode('audit')" id="nav-audit" class="flex-1 py-3 rounded-xl font-black text-xs uppercase bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500 transition-all">Auditar</button>
+        <button onclick="setMode('notes')" id="nav-notes" class="flex-1 py-3 rounded-xl font-black text-xs uppercase text-slate-400 transition-all">Reporte</button>
+        <button onclick="setMode('history')" id="nav-history" class="flex-1 py-3 rounded-xl font-black text-xs uppercase text-slate-400 transition-all">Historial</button>
+    </nav>
 
     <main class="flex-1 overflow-hidden" id="main-scroll">
         <div id="map-container">
@@ -120,85 +70,52 @@
         </div>
     </main>
 
-    <div id="menu-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[200] hidden items-center justify-center p-6" onclick="closeModal('menu-modal')">
-        <div class="bg-white rounded-[2.5rem] p-6 max-w-sm w-full space-y-3 shadow-2xl border border-slate-100" onclick="event.stopPropagation()">
-            <div class="text-center pb-2 border-b border-slate-100">
-                <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Panel de Control</h3>
-            </div>
-            <button onclick="closeModal('menu-modal'); openModal('notes-modal')" class="w-full text-left p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-xs uppercase flex items-center justify-between transition-colors">
-                <span>Generar Reporte Turno</span> <i class="fa-solid fa-file-invoice text-emerald-500"></i>
-            </button>
-            <button onclick="closeModal('menu-modal'); openModal('history-modal'); renderHistory()" class="w-full text-left p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-xs uppercase flex items-center justify-between transition-colors">
-                <span>Ver Historial Auditorías</span> <i class="fa-solid fa-history text-indigo-500"></i>
-            </button>
-            <button onclick="closeModal('menu-modal'); resetLayout()" class="w-full text-left p-4 bg-red-50 hover:bg-red-100 rounded-2xl font-black text-xs uppercase text-red-600 flex items-center justify-between transition-colors">
-                <span>Resetear Diseño Original</span> <i class="fa-solid fa-trash-can text-red-500"></i>
-            </button>
-            <button onclick="closeModal('menu-modal')" class="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-wider mt-4">Cerrar Menú</button>
-        </div>
-    </div>
-
-    <div id="notes-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[200] hidden items-center justify-center p-6" onclick="closeModal('notes-modal')">
-        <div class="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-md w-full space-y-5" onclick="event.stopPropagation()">
+    <div id="notes-screen" class="screen-overlay p-6">
+        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100 max-w-md mx-auto w-full space-y-5">
             <div class="text-center border-b border-slate-100 pb-4">
-                <h3 class="text-xs font-black uppercase italic tracking-wider">Formulario de Control</h3>
+                <h3 class="text-xs font-black uppercase italic tracking-wider">PREPARACIÓN DE REPORTE</h3>
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Mesas Físicas</label>
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Mesa In Situ</label>
                     <div id="note-insitu" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-center text-lg border border-slate-100 text-slate-900">0</div>
                 </div>
                 <div>
-                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Mesas Abiertas POS</label>
-                    <input id="note-micros" type="number" placeholder="0" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-center text-lg focus:outline-emerald-500">
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Sistema POS</label>
+                    <input id="note-micros" type="number" placeholder="Cant." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-center text-lg focus:outline-emerald-500">
                 </div>
             </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Observaciones Generales</label>
-                <textarea id="note-text" placeholder="Detalles observados in situ..." rows="3" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-emerald-500 placeholder:text-slate-400 resize-none"></textarea>
-            </div>
-            <div class="flex gap-3">
-                <button onclick="closeModal('notes-modal')" class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl font-black text-xs uppercase">Cancelar</button>
-                <button onclick="saveAudit()" class="flex-1 bg-slate-950 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-transform">Guardar Registro</button>
-            </div>
+            <button onclick="saveAudit()" class="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-transform">Guardar e Historial</button>
         </div>
     </div>
 
-    <div id="history-modal" class="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[200] hidden items-center justify-center p-6" onclick="closeModal('history-modal')">
-        <div class="bg-white rounded-[2.5rem] p-6 max-w-xl w-full h-[80vh] flex flex-col shadow-2xl border border-slate-100" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center pb-4 border-b border-slate-100 shrink-0">
-                <div>
-                    <h2 class="font-black uppercase italic text-lg tracking-tight">Historial de Turnos</h2>
-                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Registros de discrepancia</p>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="clearHistory()" class="text-red-500 font-black text-[10px] uppercase tracking-wider bg-red-50 px-3 py-2 rounded-xl">Limpiar DB</button>
-                    <button onclick="closeModal('history-modal')" class="bg-slate-100 p-2 rounded-xl text-slate-500"><i class="fa-solid fa-times"></i></button>
-                </div>
+    <div id="history-screen" class="screen-overlay p-6">
+        <div class="max-w-md mx-auto w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-black uppercase italic text-lg tracking-tight">Historial de Controles</h2>
+                <button onclick="clearHistory()" class="text-red-500 font-black text-xs uppercase tracking-wider bg-red-50 px-3 py-1.5 rounded-xl">Borrar Todo</button>
             </div>
-            <div id="history-list" class="flex-1 overflow-y-auto py-4 space-y-3 pr-1">
-                </div>
+            <div id="history-list" class="space-y-4"></div>
         </div>
     </div>
 
-    <footer class="p-4 bg-white border-t border-slate-200 shrink-0 z-40 shadow-lg flex justify-between items-center px-6">
-        <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="current-time" class="text-xs font-black tracking-wider text-slate-600">00:00:00</span>
+    <footer id="main-footer" class="p-4 bg-white border-t border-slate-200 shrink-0 z-50 shadow-lg">
+        <div class="flex gap-3 max-w-md mx-auto">
+            <button onclick="setMode('notes')" class="flex-1 bg-slate-950 hover:bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-transform tracking-wider">Generar Reporte</button>
+            <button onclick="clearCurrent()" class="px-6 bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-2xl active:scale-[0.98] transition-transform"><i class="fa-solid fa-rotate-right text-sm"></i></button>
         </div>
-        <button onclick="tables.forEach(t => t.status = 'free'); saveData(); render(); showToast('Plano de mesas reseteado');" class="text-slate-400 hover:text-red-500 font-black text-xs uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-red-50 transition-colors">Limpiar Conteo</button>
     </footer>
 
     <div id="toast" class="bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-2xl border border-slate-800">
-        <span id="toast-msg">SISTEMA INICIALIZADO</span>
+        <span id="toast-msg"></span>
     </div>
 
     <script>
         const DB_PREFIX = 'spotcheck_1225_lobby';
         let tables = [];
         let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
-        let isLocked = false; 
-        let draggingId = null;
+        let isLocked = false;
+        let currentMode = 'audit', draggingId = null;
 
         function createInitialLayout() {
             const mapData = [
@@ -219,12 +136,12 @@
             const saved = localStorage.getItem(`${DB_PREFIX}_tables`);
             if (!saved) createInitialLayout(); else tables = JSON.parse(saved);
             
-            const savedLock = localStorage.getItem(`${DB_PREFIX}_locked`);
-            isLocked = savedLock ? JSON.parse(savedLock) : false;
-            updateLockUI();
+            isLocked = false;
+            document.getElementById('lock-icon').className = 'fa-solid fa-unlock text-emerald-400';
+            document.getElementById('lock-text').innerText = 'EDICIÓN';
+            document.getElementById('lock-text').className = 'text-[10px] font-black uppercase text-emerald-500 tracking-wider';
 
             render();
-            startTime();
             
             window.addEventListener('pointermove', (e) => {
                 if (draggingId !== null && !isLocked) {
@@ -244,14 +161,14 @@
             layer.innerHTML = '';
             let count = 0;
             tables.forEach(t => {
-                if(t.status === 'occupied') count++;
+                if(t.status !== 'free') count++;
                 const div = document.createElement('div');
                 div.className = `mesa ${t.status === 'occupied' ? 'mesa-occupied' : (t.status === 'indet' ? 'mesa-indet' : 'mesa-free')}`;
                 div.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px;`;
                 div.innerHTML = `<span>${t.label}</span>`;
                 div.onpointerdown = (e) => {
                     if (!isLocked) { draggingId = t.id; }
-                    else {
+                    else if (currentMode === 'audit') {
                         t.status = t.status === 'free' ? 'occupied' : (t.status === 'occupied' ? 'indet' : 'free');
                         saveData(); render();
                     }
@@ -263,17 +180,26 @@
             if(document.getElementById('note-insitu')) document.getElementById('note-insitu').innerText = count;
         }
 
-        function toggleLock() {
-            isLocked = !isLocked;
-            saveData();
-            updateLockUI();
-            showToast(isLocked ? "Modo Auditoría (Mapa de Bloqueado)" : "Modo Ajuste Layout");
+        function setMode(m) {
+            currentMode = m;
+            document.getElementById('nav-audit').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='audit'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            document.getElementById('nav-notes').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='notes'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            document.getElementById('nav-history').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='history'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            
+            document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
+            document.getElementById('history-screen').classList.toggle('active', m === 'history');
+            document.getElementById('main-footer').style.display = (m === 'history' || m === 'notes') ? 'none' : 'block';
+            
+            if(m === 'history') renderHistory();
+            render();
         }
 
-        function updateLockUI() {
+        function toggleLock() {
+            isLocked = !isLocked;
             document.getElementById('lock-icon').className = isLocked ? 'fa-solid fa-lock text-red-500' : 'fa-solid fa-unlock text-emerald-400';
             document.getElementById('lock-text').innerText = isLocked ? 'BLOQUEADO' : 'EDICIÓN';
             document.getElementById('lock-text').className = isLocked ? 'text-[10px] font-black uppercase text-slate-400 tracking-wider' : 'text-[10px] font-black uppercase text-emerald-500 tracking-wider';
+            showToast(isLocked ? "Modo Auditoría (Mapa Fijo)" : "Modo Ajuste Layout");
         }
 
         function toggleFit() {
@@ -282,86 +208,30 @@
         }
 
         function saveAudit() {
-            const insituCount = parseInt(document.getElementById('note-insitu').innerText);
-            const microsCount = parseInt(document.getElementById('note-micros').value) || 0;
-            const obsText = document.getElementById('note-text').value || "Sin observaciones.";
-
             audits.unshift({
                 id: Date.now(),
                 date: new Date().toLocaleDateString(),
                 time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-                insitu: insituCount,
-                micros: microsCount,
-                obs: obsText
+                insitu: parseInt(document.getElementById('note-insitu').innerText),
+                micros: parseInt(document.getElementById('note-micros').value)||0
             });
-            
             saveData();
-            closeModal('notes-modal');
-            document.getElementById('note-micros').value = "";
-            document.getElementById('note-text').value = "";
-            showToast("Auditoría guardada localmente");
+            setMode('history');
         }
 
         function renderHistory() {
-            const list = document.getElementById('history-list');
-            if(audits.length === 0) {
-                list.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs font-bold uppercase">Sin registros guardados</div>`;
-                return;
-            }
-            list.innerHTML = audits.map(a => `
-                <div class="bg-slate-50 p-5 rounded-3xl border border-slate-100 space-y-3 relative group">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] text-emerald-600 font-black uppercase tracking-wider">${a.date} — ${a.time}</span>
-                            <h4 class="font-black text-sm italic mt-0.5">SISTEMA: ${a.micros} | REAL IN SITU: ${a.insitu}</h4>
-                        </div>
-                        <div class="flex gap-1.5">
-                            <button onclick="downloadTXT(${a.id})" class="p-2 bg-white rounded-xl shadow-sm border border-slate-200/60 text-slate-600 hover:text-emerald-500 transition-colors"><i class="fa-solid fa-file-arrow-down text-xs"></i></button>
-                            <button onclick="deleteAudit(${a.id})" class="p-2 bg-white rounded-xl shadow-sm border border-slate-200/60 text-slate-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
-                        </div>
+            document.getElementById('history-list').innerHTML = audits.map(a => `
+                <div class="bg-white p-6 rounded-3xl border flex justify-between items-center shadow-sm">
+                    <div>
+                        <p class="text-[10px] text-emerald-500 font-bold">${a.date} ${a.time}</p>
+                        <h4 class="font-black italic text-slate-900">POS: ${a.micros} | REAL: ${a.insitu}</h4>
                     </div>
-                    <p class="text-[11px] font-medium text-slate-500 bg-white p-3 rounded-2xl border border-slate-100 leading-relaxed">${a.obs}</p>
                 </div>
             `).join('');
         }
 
-        function downloadTXT(id) {
-            const a = audits.find(x => x.id === id);
-            if(!a) return;
-            const content = `========================================\r\n` +
-                            `        REPORT DE AUDITORIA - 1225\r\n` +
-                            `========================================\r\n` +
-                            `Fecha: ${a.date}\r\n` +
-                            `Hora: ${a.time}\r\n` +
-                            `----------------------------------------\r\n` +
-                            `Conteo Físico (In Situ): ${a.insitu} mesas\r\n` +
-                            `Conteo Abiertas POS:     ${a.micros} mesas\r\n` +
-                            `Discrepancia Total:      ${a.insitu - a.micros} mesas\r\n` +
-                            `----------------------------------------\r\n` +
-                            `Observaciones:\r\n${a.obs}\r\n` +
-                            `========================================\r\n`;
-            
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `SPOTCHECK_Reporte_${a.date.replace(/\//g, '-')}_${a.time.replace(/:/g, '')}.txt`;
-            link.click();
-            URL.revokeObjectURL(url);
-            showToast("Archivo TXT Descargado");
-        }
-
-        function deleteAudit(id) { if(confirm("¿Eliminar este reporte?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
-        function clearHistory() { if(confirm("¿Seguro de borrar TODO el historial?")) { audits = []; saveData(); renderHistory(); } }
-        function openModal(id) { document.getElementById(id).classList.replace('hidden', 'flex'); }
-        function closeModal(id) { document.getElementById(id).classList.replace('flex', 'hidden'); }
-        
-        function resetLayout() { if (confirm("¿Limpiar todo el diseño actual?")) { createInitialLayout(); render(); } }
-        
-        function startTime() { setInterval(() => document.getElementById('current-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}), 1000); }
-
         // =========================================================================
-        // ALGORITMO OCR MEJORADO PARA EXTRAER EL NÚMERO ANTES DE LA BARRA "/"
+        // ALGORITMO OCR CORREGIDO: EXTRAE LOS NÚMEROS DE MESA CORRECTOS ANTES DE LA "/"
         // =========================================================================
         async function handleOCR(input) {
             const file = input.files[0]; if (!file) return;
@@ -375,24 +245,19 @@
                 const result = await Tesseract.recognize(file, 'eng');
                 let text = result.data.text;
                 
-                // 1. Normalizamos errores tipográficos comunes de la pantalla del POS
                 text = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
                 
-                // 2. EXPRESIÓN REGULAR EXACTA:
-                // Busca "Tbl", salta los espacios (\s+) y CAPTURA el número (\d+) antes de la barra (\/)
-                // Ejemplo: En "Tbl 10/1" guardará exactamente el "10"
+                // Expresión calibrada para extraer el número justo antes de la barra "/"
                 const regex = /Tbl\s+(\d+)\//g; 
                 
                 let match;
                 let count = 0;
                 
-                // Limpiamos los estados de las mesas antes de volcar la nueva lectura
                 tables.forEach(t => t.status = 'free');
 
                 while ((match = regex.exec(text)) !== null) {
-                    const tableNum = match[1]; // Aquí se guardan tus números: 90, 10, 41, 8, 22...
+                    const tableNum = match[1]; // Captura el 90, 10, 41, 8, 22...
                     
-                    // Buscamos si ese número coincide con alguna mesa de tu mapa de fondo
                     const target = tables.find(t => t.label === tableNum);
                     if (target) { 
                         target.status = 'occupied'; 
@@ -403,8 +268,6 @@
                 if (count > 0) {
                     showToast(`SINCRO: ${count} MESAS ACTIVAS`);
                 } else {
-                    // Plan de respaldo elástico: si el OCR no leyó bien la palabra "Tbl", 
-                    // intenta capturar cualquier número que tenga una barra "/" pegada a la derecha
                     const fallbackRegex = /(\d+)\//g;
                     while ((match = fallbackRegex.exec(text)) !== null) {
                         const target = tables.find(t => t.label === match[1]);
@@ -420,7 +283,7 @@
                 if(ocrIcon) ocrIcon.className = "fa-solid fa-camera";
                 render(); 
                 saveData();
-                input.value = ""; // Resetea el input para poder volver a escanear otra foto
+                input.value = "";
             }
         }
 
@@ -437,10 +300,24 @@
         function saveData() {
             localStorage.setItem(`${DB_PREFIX}_tables`, JSON.stringify(tables));
             localStorage.setItem(`${DB_PREFIX}_audits`, JSON.stringify(audits));
-            localStorage.setItem(`${DB_PREFIX}_locked`, JSON.stringify(isLocked));
         }
 
-        // Iniciar la aplicación
+        function clearCurrent() { 
+            if(confirm("¿Resetear conteo actual?")) { 
+                tables.forEach(t => t.status = 'free'); 
+                render(); 
+                saveData(); 
+            } 
+        }
+
+        function clearHistory() { 
+            if(confirm("¿Borrar todo el historial de reportes?")) { 
+                audits = []; 
+                if (typeof renderHistory === 'function') renderHistory(); 
+                saveData(); 
+            } 
+        }
+
         init();
     </script>
 </body>
