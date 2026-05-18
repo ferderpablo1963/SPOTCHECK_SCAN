@@ -2,120 +2,336 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#020617">
     
-    <title>SPOT CHECK - LOBBY 1225</title>
+    <title>SPOT CHECK - CONTROL PROFESIONAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; overscroll-behavior: none; background-color: #f8fafc; }
-        #main-scroll { overflow: auto; position: relative; background-color: #e2e8f0; height: calc(100vh - 205px); }
-        #map-container { height: 1200px; width: 2000px; position: relative; background-color: #ffffff; transition: transform 0.2s ease; transform-origin: top left; }
-        .mesa { position: absolute; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: pointer; transition: all 0.2s; user-select: none; transform: translate(-50%, -50%); }
-        .mesa-free { background-color: #ffffff; color: #64748b; border: 3px solid #e2e8f0; }
-        .mesa-occupied { background-color: #020617 !important; color: #ffffff !important; border: 3px solid #020617; }
-        .mesa-indet { background-color: #ef4444 !important; color: #ffffff !important; border: 3px solid #ef4444; }
-        .screen-overlay { position: fixed; left: 0; right: 0; bottom: 0; top: 205px; background-color: #f8fafc; z-index: 100; overflow-y: auto; display: none; }
-        .screen-overlay.active { display: flex; flex-direction: column; }
-        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            overscroll-behavior: none; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #f8fafc;
+        }
+        
+        /* HABILITAR ENTRADA DE TEXTO Y SELECCIÓN EN CAMPOS DE FORMULARIO */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            touch-action: auto !important;
+        }
+        
+        #main-scroll {
+            overflow: auto;
+            position: relative;
+            background-color: #e2e8f0;
+        }
+
+        #map-container { 
+            height: 1200px; 
+            width: 2000px;
+            position: relative;
+            background-color: #ffffff;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: top left;
+        }
+
+        .design-grid {
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .mesa {
+            position: absolute;
+            transform-origin: center center;
+            transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+            z-index: 10;
+            touch-action: none;
+            user-select: none;
+            cursor: pointer;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .mesa-free { background-color: #ffffff; color: #64748b; border: 2px solid #e2e8f0; }
+        .mesa-occupied { 
+            background-color: #000000 !important; 
+            color: #ffffff !important; 
+            border: 2px solid #000000 !important; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        .mesa-indet { 
+            background-color: #ef4444 !important; 
+            color: #ffffff !important; 
+            border: 2px solid #ef4444 !important;
+            box-shadow: 0 10px 15px -3px rgba(239, 239, 239, 0.3);
+        }
+
+        .design-mode .mesa {
+            background-color: #ffffff !important;
+            color: #64748b !important;
+            border: 2px solid #e2e8f0 !important;
+        }
+
+        .handle {
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            display: none;
+            z-index: 120;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            touch-action: none;
+        }
+        
+        .selected-design .handle { display: flex; }
+        .resizer-handle { right: -19px; bottom: -19px; background-color: #f59e0b; cursor: nwse-resize; }
+        .rotator-handle { right: -19px; top: -19px; background-color: #3b82f6; cursor: crosshair; }
+
+        #toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            transition: transform 0.3s ease-out;
+            z-index: 1000;
+        }
         #toast.show { transform: translateX(-50%) translateY(0); }
+        
+        .screen-overlay {
+            position: fixed;
+            left: 0; right: 0; bottom: 0; top: 205px;    
+            background-color: #f8fafc;
+            z-index: 30;   
+            overflow-y: auto;
+            display: none;
+            padding-bottom: 100px; 
+        }
+        .screen-overlay.active { display: flex; }
+
+        @media (max-height: 520px) and (orientation: landscape) {
+            header { padding-top: 6px !important; padding-bottom: 6px !important; padding-left: 12px !important; padding-right: 12px !important; }
+            header .w-10.h-10 { width: 24px !important; height: 24px !important; border-radius: 6px !important; }
+            header .w-10.h-10 i { font-size: 12px !important; }
+            header h1 { font-size: 13px !important; }
+            header p { display: none !important; }
+            #lock-btn { padding: 4px 8px !important; border-radius: 8px !important; }
+            #lock-btn span { font-size: 8px !important; }
+            #lock-btn i { font-size: 8px !important; }
+
+            .bg-white.border-b.px-6.py-3 { padding-top: 4px !important; padding-bottom: 4px !important; padding-left: 12px !important; padding-right: 12px !important; }
+            .bg-white.border-b.px-6.py-3 p.text-sm { font-size: 11px !important; }
+            .bg-white.border-b.px-6.py-3 button { padding: 2px 8px !important; font-size: 9px !important; border-radius: 8px !important; }
+
+            nav { padding-top: 4px !important; padding-bottom: 4px !important; padding-left: 8px !important; padding-right: 8px !important; }
+            nav button { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 9px !important; border-radius: 8px !important; }
+            
+            .screen-overlay { top: 115px; }
+            
+            footer { padding: 8px !important; }
+            footer button { padding-top: 10px !important; padding-bottom: 10px !important; font-size: 10px !important; border-radius: 14px !important; }
+            #table-edit-zone input { padding: 8px 12px !important; font-size: 12px !important; border-radius: 12px !important; }
+            #table-edit-zone button { width: 36px !important; height: 36px !important; border-radius: 12px !important; }
+        }
+
+        @media print {
+            header, nav, footer, .no-print, .bg-slate-100, button { display: none !important; }
+            .screen-overlay { position: static; display: block; top: 0; background: white !important; padding: 0 !important; }
+            body { background: white; overflow: visible !important; }
+            .print-card { border: 2px solid #000000 !important; box-shadow: none !important; border-radius: 0 !important; padding: 15px !important; page-break-inside: avoid; }
+            .print-table-row { border-bottom: 1px solid #000000 !important; }
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden text-slate-900 select-none">
+<body class="h-screen flex flex-col overflow-hidden select-none text-slate-900">
 
-    <header class="bg-slate-950 text-white p-6 pt-12 flex justify-between items-center shrink-0 z-[110] border-b border-slate-900">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                <i class="fa-solid fa-layer-group text-slate-950 text-2xl"></i>
+    <header class="bg-slate-950 text-white p-5 pt-12 flex justify-between items-center shrink-0 shadow-2xl z-[60]">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg transform -rotate-3">
+                <i class="fa-solid fa-layer-group text-slate-950 text-xl"></i>
             </div>
             <div>
-                <h1 class="font-black text-2xl italic uppercase tracking-tight">SPOT CHECK</h1>
-                <p class="text-[9px] text-slate-400 font-black tracking-widest uppercase">1225 LOBBY BAR</p>
+                <h1 class="font-black text-xl tracking-tighter uppercase italic leading-none">SPOT CHECK</h1>
+                <p class="text-[8px] text-slate-400 font-black tracking-[0.3em] uppercase mt-1">SISTEMA AUDITOR</p>
             </div>
         </div>
-        <button onclick="toggleLock()" id="lock-btn" class="flex items-center gap-3 px-5 py-2.5 bg-slate-900 rounded-2xl border border-slate-800 shadow-inner">
-            <span id="lock-text" class="text-[10px] font-black uppercase text-slate-400 tracking-wider">EDICIÓN</span>
-            <i class="fa-solid fa-unlock text-emerald-400" id="lock-icon"></i>
+        <button onclick="toggleLock()" id="lock-btn" class="group flex items-center gap-2 px-4 py-2 bg-slate-900 rounded-2xl border border-slate-800 transition-all active:scale-95">
+            <span id="lock-text" class="text-[9px] font-black uppercase text-slate-500">Bloqueado</span>
+            <i class="fa-solid fa-lock text-red-500" id="lock-icon"></i>
         </button>
     </header>
 
-    <div class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center z-50 shrink-0 shadow-sm">
-        <div class="flex gap-6">
-            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Mesa In Situ</p><p id="stat-occupied" class="text-xl font-black text-slate-950">0</p></div>
-            <div><p class="text-[9px] font-black text-slate-400 uppercase tracking-wider">Ocupación</p><p id="stat-percent" class="text-xl font-black text-emerald-600">0%</p></div>
+    <div class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-50 shrink-0">
+        <div class="flex gap-4">
+            <div>
+                <p class="text-[8px] font-black text-slate-400 uppercase">Mesas Activas</p>
+                <p id="stat-occupied" class="text-sm font-black">0</p>
+            </div>
+            <div class="w-[1px] h-6 bg-slate-100 my-auto"></div>
+            <div>
+                <p class="text-[8px] font-black text-slate-400 uppercase">Ocupación</p>
+                <p id="stat-percent" class="text-sm font-black text-emerald-600">0%</p>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <label class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2.5 rounded-xl text-xs font-black uppercase cursor-pointer flex items-center gap-2 shadow-md shadow-emerald-500/10 active:scale-95 transition-transform">
-                <i id="ocr-icon" class="fa-solid fa-camera"></i> <span id="ocr-text">SCAN</span>
-                <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" class="hidden" onchange="handleOCR(this)">
-            </label>
-            <button onclick="toggleFit()" class="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black uppercase active:scale-95 transition-transform">FIT</button>
+        <div class="text-right flex items-center gap-2">
+            <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" class="hidden" onchange="processImageOCR(event)">
+            
+            <button onclick="triggerCameraOCR()" id="btn-ocr" class="bg-slate-950 text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-lg text-[10px] font-black uppercase active:bg-slate-800 transition-colors flex items-center gap-1.5">
+                <i id="btn-ocr-icon" class="fa-solid fa-camera text-xs"></i> <span id="btn-ocr-text">SCAN</span>
+            </button>
+
+            <button onclick="toggleFit()" id="btn-fit" class="bg-slate-100 px-4 py-2 rounded-lg text-[10px] font-black uppercase text-slate-600 active:bg-slate-300 transition-colors">
+                <i class="fa-solid fa-expand mr-1"></i> FIT
+            </button>
+            <p id="current-time" class="text-[10px] font-black text-slate-950">00:00</p>
         </div>
     </div>
 
-    <nav class="px-6 py-3 bg-slate-50 flex gap-2 z-40 border-b border-slate-200 shrink-0">
-        <button onclick="setMode('audit')" id="nav-audit" class="flex-1 py-3 rounded-xl font-black text-xs uppercase bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500 transition-all">Auditar</button>
-        <button onclick="setMode('notes')" id="nav-notes" class="flex-1 py-3 rounded-xl font-black text-xs uppercase text-slate-400 transition-all">Reporte</button>
-        <button onclick="setMode('history')" id="nav-history" class="flex-1 py-3 rounded-xl font-black text-xs uppercase text-slate-400 transition-all">Historial</button>
+    <nav class="px-4 py-3 bg-slate-50 flex gap-2 shrink-0 z-40 border-b border-slate-200">
+        <div class="flex w-full bg-slate-200/50 p-1 rounded-2xl border border-white/50">
+            <button onclick="setMode('audit')" id="nav-audit" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500">Auditar</button>
+            <button onclick="setMode('design')" id="nav-design" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all text-slate-400">Diseño</button>
+            <button onclick="setMode('notes')" id="nav-notes" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all text-slate-400">Reporte</button>
+            <button onclick="setMode('history')" id="nav-history" class="flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all text-slate-400">Historial</button>
+        </div>
     </nav>
 
-    <main class="flex-1 overflow-hidden" id="main-scroll">
-        <div id="map-container">
-            <div id="mesas-layer" class="w-full h-full"></div>
+    <main class="flex-1 overflow-hidden relative" id="main-scroll">
+        <div id="map-container" onclick="deselectTable()">
+            <div id="mesas-layer" class="w-full h-full relative"></div>
         </div>
     </main>
 
-    <div id="notes-screen" class="screen-overlay p-6">
-        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-slate-100 max-w-md mx-auto w-full space-y-5">
-            <div class="text-center border-b border-slate-100 pb-4">
-                <h3 class="text-xs font-black uppercase italic tracking-wider">PREPARACIÓN DE REPORTE</h3>
+    <div id="notes-screen" class="screen-overlay flex-col p-4">
+        <div id="printable-area" class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-200 max-w-md mx-auto w-full space-y-5">
+            <div class="text-center border-b border-slate-100 pb-3">
+                <h3 class="text-sm font-black uppercase italic text-slate-900 tracking-tight">PREPARACIÓN DE REPORTE</h3>
+                <p class="text-[9px] text-slate-400 font-bold uppercase">(Control vs POS System)</p>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Mesa In Situ</label>
-                    <div id="note-insitu" class="w-full p-4 bg-slate-50 rounded-2xl font-black text-center text-lg border border-slate-100 text-slate-900">0</div>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Mesa In Situ (Plano)</label>
+                        <input id="note-insitu" type="number" readonly class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl font-black text-sm text-slate-900 text-center">
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Mesas en Sistema POS</label>
+                        <input id="note-micros" type="number" oninput="calculateDiscrepancy()" placeholder="Cant. POS" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl font-black text-sm text-center text-emerald-600 outline-none ring-2 ring-emerald-500/20">
+                    </div>
                 </div>
+
+                <div id="discrepancy-box" class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center transition-all">
+                    <span class="text-[10px] font-black uppercase text-slate-500">Estado de Conciliación:</span>
+                    <span id="discrepancy-badge" class="px-3 py-1 rounded-full font-black text-[10px] uppercase bg-slate-200 text-slate-600">Esperando datos</span>
+                </div>
+
                 <div>
-                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1">Sistema POS</label>
-                    <input id="note-micros" type="number" placeholder="Cant." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-center text-lg focus:outline-emerald-500">
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Ubicación / Sector</label>
+                    <input id="note-lugar" type="text" placeholder="Ej: Lobby Bar / Terraza" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Hora Auditoría</label>
+                        <input id="note-hora" type="text" class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl font-bold text-xs text-center" readonly>
+                    </div>
+                    <div>
+                        <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Firma Auditor</label>
+                        <input id="note-firma" type="text" placeholder="Nombre" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-black uppercase text-xs outline-none text-center">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] font-black uppercase text-slate-400 ml-1 italic">Observaciones y Justificaciones</label>
+                    <textarea id="note-observaciones" rows="3" placeholder="Ingresar notas si existen discrepancias con el sistema..." class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-xs outline-none"></textarea>
                 </div>
             </div>
-            <button onclick="saveAudit()" class="w-full bg-slate-950 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-transform">Guardar e Historial</button>
+
+            <button onclick="openModal('audit-modal')" class="w-full bg-slate-950 text-white py-3.5 rounded-2xl font-black text-xs uppercase shadow-xl tracking-wider active:scale-95 transition-transform">Cerrar y Archivar Control</button>
         </div>
     </div>
 
-    <div id="history-screen" class="screen-overlay p-6">
-        <div class="max-w-md mx-auto w-full">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="font-black uppercase italic text-lg tracking-tight">Historial de Controles</h2>
-                <button onclick="clearHistory()" class="text-red-500 font-black text-xs uppercase tracking-wider bg-red-50 px-3 py-1.5 rounded-xl">Borrar Todo</button>
+    <div id="history-screen" class="screen-overlay flex-col p-4">
+        <div class="max-w-md mx-auto w-full space-y-4">
+            <div class="flex justify-between items-center px-2">
+                <div>
+                    <h3 class="font-black text-base uppercase italic tracking-tight text-slate-950">Historial de Controles</h3>
+                    <p class="text-[8px] text-slate-400 font-bold uppercase">Registros almacenados localmente</p>
+                </div>
+                <button onclick="clearHistory()" class="text-red-500 font-black text-[10px] uppercase tracking-wider bg-red-50 px-3 py-2 rounded-xl active:bg-red-100 border border-red-200/40">Borrar Todo</button>
             </div>
-            <div id="history-list" class="space-y-4"></div>
+            <div id="history-list" class="space-y-3"></div>
         </div>
     </div>
 
-    <footer id="main-footer" class="p-4 bg-white border-t border-slate-200 shrink-0 z-50 shadow-lg">
-        <div class="flex gap-3 max-w-md mx-auto">
-            <button onclick="setMode('notes')" class="flex-1 bg-slate-950 hover:bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-transform tracking-wider">Generar Reporte</button>
-            <button onclick="clearCurrent()" class="px-6 bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-2xl active:scale-[0.98] transition-transform"><i class="fa-solid fa-rotate-right text-sm"></i></button>
+    <div id="audit-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[500] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] p-6 max-w-sm w-full space-y-4 shadow-2xl border border-slate-100 transform scale-100 transition-transform">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl"><i class="fa-solid fa-folder-plus"></i></div>
+                <h4 class="font-black text-sm uppercase italic text-slate-900">¿Guardar Auditoría actual?</h4>
+                <p class="text-[9px] text-slate-400 font-semibold">Se congelará el registro de mesas activas y se moverá la información al historial.</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeModal('audit-modal')" class="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase text-slate-500 active:bg-slate-200">Cancelar</button>
+                <button onclick="saveAudit()" class="flex-1 py-3 bg-emerald-500 text-slate-950 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer id="main-footer" class="p-4 bg-white border-t border-slate-200 shrink-0 z-50 shadow-xl">
+        <div id="table-edit-zone" class="hidden max-w-md mx-auto items-center justify-between gap-3 transition-all animate-fade-in">
+            <div class="flex items-center gap-2 flex-1">
+                <input id="edit-label" type="text" placeholder="Mesa" class="w-16 p-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-center text-xs outline-none uppercase" oninput="updateSelectedTableProps()">
+                <div class="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2 gap-1">
+                    <span class="text-[9px] font-black text-slate-400 uppercase ml-1">Z:</span>
+                    <button onclick="adjustSelectedZ(-1)" class="w-7 h-7 bg-white border rounded-lg text-xs font-bold text-slate-600 active:bg-slate-100">-</button>
+                    <span id="edit-zindex" class="text-xs font-black w-4 text-center">10</span>
+                    <button onclick="adjustSelectedZ(1)" class="w-7 h-7 bg-white border rounded-lg text-xs font-bold text-slate-600 active:bg-slate-100">+</button>
+                </div>
+            </div>
+            <div class="flex gap-1.5">
+                <button onclick="cloneSelectedTable()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl active:scale-95 transition-transform flex items-center justify-center border" title="Clonar"><i class="fa-solid fa-clone text-xs"></i></button>
+                <button onclick="deleteSelectedTable()" class="w-10 h-10 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl active:scale-95 transition-transform flex items-center justify-center border border-red-200" title="Eliminar"><i class="fa-solid fa-trash-can text-xs"></i></button>
+            </div>
+        </div>
+        
+        <div id="normal-footer-zone" class="flex gap-2 max-w-md mx-auto">
+            <button onclick="setMode('notes')" class="flex-1 bg-slate-950 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase shadow-lg tracking-wider active:scale-95 transition-transform">Generar Reporte de Control</button>
+            <button onclick="clearCurrent()" class="px-5 bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl active:scale-95 transition-transform border border-slate-200/50" title="Reiniciar conteo actual"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+            <button onclick="resetLayout()" id="btn-reset-layout" class="hidden px-5 bg-red-50 text-red-400 rounded-2xl active:scale-95 transition-transform border border-red-200/40" title="Resetear layout de fábrica"><i class="fa-solid fa-trash-arrow-up text-xs"></i></button>
+            <button onclick="addNewTable()" id="btn-add-table" class="hidden bg-emerald-500 text-slate-950 px-5 rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-transform shadow-lg shadow-emerald-500/10 flex items-center gap-1"><i class="fa-solid fa-plus text-xs"></i> MESA</button>
         </div>
     </footer>
 
-    <div id="toast" class="bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase shadow-2xl border border-slate-800">
-        <span id="toast-msg"></span>
+    <div id="toast" class="bg-slate-900/95 text-white px-5 py-3 rounded-2xl font-black text-[10px] uppercase shadow-2xl border border-slate-800 backdrop-blur-sm">
+        <i class="fa-solid fa-circle-info mr-1.5 text-emerald-400"></i> <span id="toast-msg"></span>
     </div>
 
     <script>
         const DB_PREFIX = 'spotcheck_1225_lobby';
         let tables = [];
         let audits = JSON.parse(localStorage.getItem(`${DB_PREFIX}_audits`)) || [];
-        let isLocked = false;
-        let currentMode = 'audit', draggingId = null;
+        let isLocked = true; 
+        let currentMode = 'audit';
+        let selectedTableId = null;
+        let isDragging = false, isResizing = false, isRotating = false;
+        let startX, startY, startW, startH, startLeft, startTop, startAngle;
 
         function createInitialLayout() {
             const mapData = [
@@ -128,7 +344,7 @@
                 {l:"10", x:1118, y:534}, {l:"11", x:1118, y:654},
                 {l:"24", x:722, y:703}, {l:"32", x:559, y:762}, {l:"25", x:885, y:778}
             ];
-            tables = mapData.map((m, i) => ({ id: i, x: m.x, y: m.y, label: m.l, status: 'free', w: 52, h: 52 }));
+            tables = mapData.map((m, i) => ({ id: Date.now() + i, x: m.x, y: m.y, label: m.l, status: 'free', w: 55, h: 55, r: 0, z: 10 }));
             saveData();
         }
 
@@ -136,192 +352,379 @@
             const saved = localStorage.getItem(`${DB_PREFIX}_tables`);
             if (!saved) createInitialLayout(); else tables = JSON.parse(saved);
             
-            isLocked = false;
-            document.getElementById('lock-icon').className = 'fa-solid fa-unlock text-emerald-400';
-            document.getElementById('lock-text').innerText = 'EDICIÓN';
-            document.getElementById('lock-text').className = 'text-[10px] font-black uppercase text-emerald-500 tracking-wider';
-
+            isLocked = JSON.parse(localStorage.getItem(`${DB_PREFIX}_locked`) ?? 'true');
+            applyLockState();
+            startTime();
             render();
+            setupGlobalMoveEvents();
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            deselectTable();
+
+            document.getElementById('nav-audit').className = `flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${m==='audit'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            document.getElementById('nav-design').className = `flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${m==='design'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            document.getElementById('nav-notes').className = `flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${m==='notes'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+            document.getElementById('nav-history').className = `flex-1 py-3 rounded-xl font-black text-[10px] uppercase transition-all ${m==='history'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+
+            document.getElementById('notes-screen').style.display = (m === 'notes') ? 'flex' : 'none';
+            document.getElementById('history-screen').style.display = (m === 'history') ? 'flex' : 'none';
             
-            window.addEventListener('pointermove', (e) => {
-                if (draggingId !== null && !isLocked) {
-                    const t = tables.find(x => x.id === draggingId);
-                    const rect = document.getElementById('map-container').getBoundingClientRect();
-                    const computedScale = rect.width / 2000;
-                    t.x = (e.clientX - rect.left) / computedScale;
-                    t.y = (e.clientY - rect.top) / computedScale;
-                    render();
-                }
-            });
-            window.addEventListener('pointerup', () => { if(draggingId !== null) { draggingId = null; saveData(); } });
+            document.getElementById('btn-add-table').style.display = (m === 'design') ? 'block' : 'none';
+            document.getElementById('btn-reset-layout').style.display = (m === 'design') ? 'block' : 'none';
+            document.getElementById('main-footer').style.display = (m === 'history') ? 'none' : 'block';
+
+            if(m === 'notes') {
+                document.getElementById('note-insitu').value = tables.filter(t => t.status !== 'free').length;
+                document.getElementById('note-hora').value = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + " / " + new Date().toLocaleDateString();
+                calculateDiscrepancy();
+            }
+            if(m === 'history') renderHistory();
+            
+            render();
+        }
+
+        function toggleLock() {
+            isLocked = !isLocked;
+            applyLockState();
+            saveData();
+        }
+
+        function applyLockState() {
+            const icon = document.getElementById('lock-icon');
+            const txt = document.getElementById('lock-text');
+            
+            if (isLocked) {
+                icon.className = 'fa-solid fa-lock text-red-500';
+                txt.innerText = 'Bloqueado';
+                txt.className = 'text-[9px] font-black uppercase text-slate-500';
+                if(currentMode === 'design') setMode('audit');
+            } else {
+                icon.className = 'fa-solid fa-unlock text-emerald-400';
+                txt.innerText = 'Edición';
+                txt.className = 'text-[9px] font-black uppercase text-emerald-400';
+            }
+            showToast(isLocked ? "Seguridad Activa (Mapa Fijo)" : "Modo Ajuste de Layout");
+            render();
         }
 
         function render() {
             const layer = document.getElementById('mesas-layer');
             layer.innerHTML = '';
             let count = 0;
+
+            document.getElementById('map-container').className = (currentMode === 'design') ? 'design-grid' : '';
+
             tables.forEach(t => {
                 if(t.status !== 'free') count++;
+                
                 const div = document.createElement('div');
+                div.id = `table-dom-${t.id}`;
                 div.className = `mesa ${t.status === 'occupied' ? 'mesa-occupied' : (t.status === 'indet' ? 'mesa-indet' : 'mesa-free')}`;
-                div.style.cssText = `left:${t.x}px; top:${t.y}px; width:${t.w}px; height:${t.h}px;`;
+                if(currentMode === 'design' && t.id === selectedTableId) div.classList.add('selected-design');
+                
+                div.style.cssText = `
+                    left: ${t.x}px; top: ${t.y}px; width: ${t.w}px; height: ${t.h}px;
+                    transform: rotate(${t.r}deg); z-index: ${t.z || 10};
+                `;
+                
                 div.innerHTML = `<span>${t.label}</span>`;
-                div.onpointerdown = (e) => {
-                    if (!isLocked) { draggingId = t.id; }
-                    else if (currentMode === 'audit') {
-                        t.status = t.status === 'free' ? 'occupied' : (t.status === 'occupied' ? 'indet' : 'free');
-                        saveData(); render();
-                    }
-                };
+
+                if (currentMode === 'design') {
+                    const rH = document.createElement('div'); rH.className = 'handle resizer-handle'; rH.innerHTML = '<i class="fa-solid fa-arrows-left-right text-[10px] transform rotate-45"></i>';
+                    const oH = document.createElement('div'); oH.className = 'handle rotator-handle'; oH.innerHTML = '<i class="fa-solid fa-rotate text-[10px]"></i>';
+                    div.appendChild(rH); div.appendChild(oH);
+
+                    div.addEventListener('pointerdown', (e) => { e.stopPropagation(); selectTable(t.id, e); });
+                    rH.addEventListener('pointerdown', (e) => { e.stopPropagation(); startResize(t.id, e); });
+                    oH.addEventListener('pointerdown', (e) => { e.stopPropagation(); startRotate(t.id, e); });
+                } else {
+                    div.addEventListener('pointerdown', (e) => {
+                        e.stopPropagation();
+                        if (currentMode === 'audit') {
+                            t.status = t.status === 'free' ? 'occupied' : (t.status === 'occupied' ? 'indet' : 'free');
+                            saveData(); render();
+                        }
+                    });
+                }
                 layer.appendChild(div);
             });
+
             document.getElementById('stat-occupied').innerText = count;
-            document.getElementById('stat-percent').innerText = Math.round((count/tables.length)*100) + '%';
-            if(document.getElementById('note-insitu')) document.getElementById('note-insitu').innerText = count;
+            document.getElementById('stat-percent').innerText = tables.length ? Math.round((count / tables.length) * 100) + '%' : '0%';
         }
 
-        // CORRECCIÓN SISTEMA NAVEGACIÓN ENTRE PESTAÑAS
-        function setMode(m) {
-            currentMode = m;
-            document.getElementById('nav-audit').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='audit'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
-            document.getElementById('nav-notes').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='notes'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
-            document.getElementById('nav-history').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='history'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
+        // =========================================================================
+        // ALGORITMO OCR INTEGRADO: BUSCA LA EXPRESIÓN "Tbl X/" EXTRAÍDA DE TU CAPTURA
+        // =========================================================================
+        function processImageOCR(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const ocrIcon = document.getElementById('btn-ocr-icon');
+            const ocrText = document.getElementById('btn-ocr-text');
             
-            document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
-            document.getElementById('history-screen').classList.toggle('active', m === 'history');
-            
-            // Corrección: El footer de abajo solo se esconde en historial y notas si estás ahí, pero se re-activa en modo Auditar.
-            document.getElementById('main-footer').style.display = (m === 'history' || m === 'notes') ? 'none' : 'block';
-            
-            if(m === 'history') renderHistory();
-            render();
+            ocrIcon.className = "fa-solid fa-spinner fa-spin text-xs text-amber-400";
+            ocrText.innerText = "LEYENDO...";
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
+                        
+                        // Normalizaciones comunes en lecturas OCR de pantallas POS
+                        let processedText = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
+                        
+                        // Captura los dígitos que se encuentran estrictamente después de "Tbl " y antes de la barra "/"
+                        const regex = /Tbl\s+(\d+)\//g;
+                        
+                        let match;
+                        let detectedNumbers = [];
+                        
+                        while ((match = regex.exec(processedText)) !== null) {
+                            detectedNumbers.push(match[1]); // Guarda los números (ej: 90, 10, 41, 8, 22)
+                        }
+
+                        let matchedCount = 0;
+                        tables.forEach(t => {
+                            if (detectedNumbers.includes(t.label)) {
+                                t.status = 'occupied'; // Las pinta de negro si coinciden con las del POS
+                                matchedCount++;
+                            } else {
+                                t.status = 'free'; // Resetea las demás a blanco
+                            }
+                        });
+
+                        if (matchedCount > 0) {
+                            showToast(`Sincronizado: ${matchedCount} mesas ocupadas`);
+                            saveData();
+                            render();
+                        } else {
+                            // Algoritmo de respaldo si el OCR omite la palabra Tbl por reflejos
+                            const fallbackRegex = /(\d+)\//g;
+                            while ((match = fallbackRegex.exec(processedText)) !== null) {
+                                detectedNumbers.push(match[1]);
+                            }
+                            tables.forEach(t => {
+                                if (detectedNumbers.includes(t.label)) { t.status = 'occupied'; matchedCount++; }
+                            });
+                            showToast(matchedCount > 0 ? `Sincro Respaldo: ${matchedCount} mesas` : "No se detectaron mesas en la captura.");
+                        }
+                    }).catch(err => {
+                        console.error(err);
+                        showToast("Fallo en la lectura del documento");
+                    }).finally(() => {
+                        ocrIcon.className = "fa-solid fa-camera text-xs";
+                        ocrText.innerText = "SCAN";
+                        document.getElementById('ocr-camera-input').value = "";
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
-        function toggleLock() {
-            isLocked = !isLocked;
-            document.getElementById('lock-icon').className = isLocked ? 'fa-solid fa-lock text-red-500' : 'fa-solid fa-unlock text-emerald-400';
-            document.getElementById('lock-text').innerText = isLocked ? 'BLOQUEADO' : 'EDICIÓN';
-            document.getElementById('lock-text').className = isLocked ? 'text-[10px] font-black uppercase text-slate-400 tracking-wider' : 'text-[10px] font-black uppercase text-emerald-500 tracking-wider';
-            showToast(isLocked ? "Modo Auditoría (Mapa Fijo)" : "Modo Ajuste Layout");
-        }
+        function triggerCameraOCR() { document.getElementById('ocr-camera-input').click(); }
 
-        function toggleFit() {
-            const c = document.getElementById('map-container');
-            c.style.transform = (c.style.transform.includes('scale(1)') || !c.style.transform) ? `scale(${window.innerWidth/2000})` : 'scale(1)';
+        function calculateDiscrepancy() {
+            const insitu = parseInt(document.getElementById('note-insitu').value) || 0;
+            const micros = parseInt(document.getElementById('note-micros').value);
+            const badge = document.getElementById('discrepancy-badge');
+            const box = document.getElementById('discrepancy-box');
+            
+            if (isNaN(micros)) {
+                badge.innerText = "Esperando datos";
+                badge.className = "px-3 py-1 rounded-full font-black text-[10px] uppercase bg-slate-200 text-slate-600";
+                box.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center transition-all";
+                return;
+            }
+
+            const diff = insitu - micros;
+            if (diff === 0) {
+                badge.innerText = "Cuadrado Perfecto (0)";
+                badge.className = "px-3 py-1 rounded-full font-black text-[10px] uppercase bg-emerald-500 text-slate-950 shadow-sm";
+                box.className = "p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex justify-between items-center transition-all";
+            } else {
+                badge.innerText = `Discrepancia (${diff > 0 ? '+' : ''}${diff})`;
+                badge.className = "px-3 py-1 rounded-full font-black text-[10px] uppercase bg-red-500 text-white shadow-sm";
+                box.className = "p-3 bg-red-50/50 border border-red-200 rounded-xl flex justify-between items-center transition-all";
+            }
         }
 
         function saveAudit() {
-            audits.unshift({
+            const auditData = {
                 id: Date.now(),
                 date: new Date().toLocaleDateString(),
                 time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-                insitu: parseInt(document.getElementById('note-insitu').innerText),
-                micros: parseInt(document.getElementById('note-micros').value)||0
-            });
+                insitu: parseInt(document.getElementById('note-insitu').value) || 0,
+                micros: parseInt(document.getElementById('note-micros').value) || 0,
+                lugar: document.getElementById('note-lugar').value || 'Sin especificar',
+                firma: document.getElementById('note-firma').value || 'Anónimo',
+                observaciones: document.getElementById('note-observaciones').value || 'Sin observaciones'
+            };
+
+            audits.unshift(auditData);
             saveData();
+            closeModal('audit-modal');
+            
+            document.getElementById('note-micros').value = '';
+            document.getElementById('note-lugar').value = '';
+            document.getElementById('note-firma').value = '';
+            document.getElementById('note-observaciones').value = '';
+            
+            showToast("Reporte Guardado Correctamente");
             setMode('history');
         }
 
         function renderHistory() {
-            document.getElementById('history-list').innerHTML = audits.map(a => `
-                <div class="bg-white p-6 rounded-3xl border flex justify-between items-center shadow-sm">
-                    <div>
-                        <p class="text-[10px] text-emerald-500 font-bold">${a.date} ${a.time}</p>
-                        <h4 class="font-black italic text-slate-900">POS: ${a.micros} | REAL: ${a.insitu}</h4>
+            const container = document.getElementById('history-list');
+            if(!audits.length) {
+                container.innerHTML = `<div class="p-8 text-center text-xs font-bold text-slate-400 uppercase tracking-wider bg-white rounded-3xl border">No hay reportes archivados</div>`;
+                return;
+            }
+
+            container.innerHTML = audits.map(a => {
+                const diff = a.insitu - a.micros;
+                const badgeColor = diff === 0 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200';
+                return `
+                    <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm space-y-3 print-card">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-[9px] font-black uppercase text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">${a.date} — ${a.time}</span>
+                                <h4 class="font-black text-sm italic text-slate-900 mt-2 uppercase tracking-tight">${a.lugar}</h4>
+                            </div>
+                            <span class="text-[10px] font-black px-3 py-1 rounded-full border uppercase ${badgeColor}">
+                                ${diff === 0 ? 'Cuadrado' : `Dif: ${diff}`}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-2xl border print-table-row">
+                            <div><p class="text-[8px] font-bold text-slate-400 uppercase">Mesa In Situ</p><p class="text-xs font-black text-slate-900">${a.insitu} Mesas</p></div>
+                            <div><p class="text-[8px] font-bold text-slate-400 uppercase">Sistema POS</p><p class="text-xs font-black text-slate-900">${a.micros} Mesas</p></div>
+                        </div>
+                        ${a.observaciones !== 'Sin observaciones' ? `<p class="text-[11px] text-slate-500 font-medium leading-relaxed bg-slate-50/50 p-2.5 rounded-xl border border-dashed"><strong class="text-slate-700 font-bold text-[9px] uppercase block mb-0.5">Notas del control:</strong>${a.observaciones}</p>` : ''}
+                        <div class="flex justify-between items-center pt-1 border-t border-slate-100 no-print">
+                            <span class="text-[9px] font-black uppercase text-slate-400 italic">Auditor: ${a.firma}</span>
+                            <div class="flex gap-1">
+                                <button onclick="downloadAuditTxt(${a.id})" class="text-slate-600 bg-slate-100 border p-2 rounded-xl text-xs active:bg-slate-200"><i class="fa-solid fa-download"></i></button>
+                                <button onclick="deleteAudit(${a.id})" class="text-red-500 bg-red-50/60 border border-red-100 p-2 rounded-xl text-xs active:bg-red-100"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
-        // =========================================================================
-        // ALGORITMO OCR INTEGRADO: BUSCA EL NÚMERO ENTRE "Tbl " Y LA "/" DEL POS
-        // =========================================================================
-        async function handleOCR(input) {
-            const file = input.files[0]; if (!file) return;
-            const textEl = document.getElementById('ocr-text');
-            const ocrIcon = document.getElementById('ocr-icon');
+        function downloadAuditTxt(id) {
+            const a = audits.find(x => x.id === id); if(!a) return;
+            const text = `========================================\r\n   SPOT CHECK AUDIT REPORT — HISTORIAL\r\n========================================\r\nFECHA: ${a.date}\r\nHORA: ${a.time}\r\nUBICACION: ${a.lugar}\r\nAUDITOR: ${a.firma}\r\n----------------------------------------\r\nCONTEO REAL (IN SITU): ${a.insitu} Mesas\r\nCONTEO EN POS:         ${a.micros} Mesas\r\nDISCREPANCIA:          ${a.insitu - a.micros}\r\n----------------------------------------\r\nOBSERVACIONES:\r\n${a.observaciones}\r\n========================================`;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a'); link.href = url;
+            link.download = `SPOTCHECK_Reporte_${a.date.replace(/\//g, '-')}_${a.time.replace(/:/g, '')}.txt`;
+            link.click(); URL.revokeObjectURL(url);
+            showToast("Archivo TXT Descargado");
+        }
+
+        function deleteAudit(id) { if(confirm("¿Eliminar este reporte?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
+        function clearHistory() { if(confirm("¿Seguro de borrar TODO el historial?")) { audits = []; saveData(); renderHistory(); } }
+        
+        function openModal(id) { 
+            document.getElementById(id).style.display = 'flex';
+        }
+        function closeModal(id) { 
+            document.getElementById(id).style.display = 'none';
+        }
+        
+        function toggleFit() { const c = document.getElementById('map-container'); c.style.transform = (c.style.transform.includes('scale(1)') || !c.style.transform) ? `scale(${window.innerWidth/2000})` : 'scale(1)'; }
+        function startTime() { setInterval(() => document.getElementById('current-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), 1000); }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toast-msg').innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); }
+        function clearCurrent() { if(confirm("¿Resetear conteo actual?")) { tables.forEach(t => t.status = 'free'); render(); saveData(); } }
+        function resetLayout() { if (confirm("¿Limpiar todo el diseño actual?")) { createInitialLayout(); render(); } }
+        function saveData() { localStorage.setItem(`${DB_PREFIX}_tables`, JSON.stringify(tables)); localStorage.setItem(`${DB_PREFIX}_audits`, JSON.stringify(audits)); localStorage.setItem(`${DB_PREFIX}_locked`, JSON.stringify(isLocked)); }
+
+        function selectTable(id, e) {
+            if(isLocked) return;
+            selectedTableId = id;
+            const t = tables.find(x => x.id === id);
+            isDragging = true;
             
-            textEl.innerText = "LEYENDO...";
-            if(ocrIcon) ocrIcon.className = "fa-solid fa-spinner fa-spin";
+            const rect = document.getElementById('map-container').getBoundingClientRect();
+            const computedScale = rect.width / 2000;
+            startX = e.clientX; startY = e.clientY;
+            startLeft = t.x; startTop = t.y;
 
-            try {
-                const result = await Tesseract.recognize(file, 'eng');
-                let text = result.data.text;
-                
-                text = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
-                
-                // Expresión calibrada: captura los números antes del carácter "/"
-                const regex = /Tbl\s+(\d+)\//g; 
-                
-                let match;
-                let count = 0;
-                
-                tables.forEach(t => t.status = 'free');
-
-                while ((match = regex.exec(text)) !== null) {
-                    const tableNum = match[1]; // Captura perfectamente 90, 10, 41, 8, 22...
-                    
-                    const target = tables.find(t => t.label === tableNum);
-                    if (target) { 
-                        target.status = 'occupied'; 
-                        count++; 
-                    }
-                }
-
-                if (count > 0) {
-                    showToast(`SINCRO: ${count} MESAS ACTIVAS`);
-                } else {
-                    const fallbackRegex = /(\d+)\//g;
-                    while ((match = fallbackRegex.exec(text)) !== null) {
-                        const target = tables.find(t => t.label === match[1]);
-                        if (target) { target.status = 'occupied'; count++; }
-                    }
-                    showToast(count > 0 ? `SINCRO RESPALDO: ${count} MESAS` : "NO SE DETECTARON MESAS");
-                }
-            } catch (e) { 
-                console.error(e);
-                showToast("ERROR DE LECTURA OCR"); 
-            } finally {
-                textEl.innerText = "SCAN"; 
-                if(ocrIcon) ocrIcon.className = "fa-solid fa-camera";
-                render(); 
-                saveData();
-                input.value = "";
-            }
+            document.getElementById('normal-footer-zone').style.display = 'none';
+            document.getElementById('table-edit-zone').style.display = 'flex';
+            document.getElementById('edit-label').value = t.label;
+            document.getElementById('edit-zindex').innerText = t.z || 10;
+            render();
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            const msgEl = document.getElementById('toast-msg');
-            if (t && msgEl) {
-                msgEl.innerText = msg;
-                t.classList.add('show'); 
-                setTimeout(() => t.classList.remove('show'), 2500);
-            }
+        function deselectTable() {
+            selectedTableId = null;
+            document.getElementById('table-edit-zone').style.display = 'none';
+            document.getElementById('normal-footer-zone').style.display = 'flex';
+            render();
         }
 
-        function saveData() {
-            localStorage.setItem(`${DB_PREFIX}_tables`, JSON.stringify(tables));
-            localStorage.setItem(`${DB_PREFIX}_audits`, JSON.stringify(audits));
+        function updateSelectedTableProps() {
+            if(!selectedTableId) return;
+            const t = tables.find(x => x.id === selectedTableId);
+            t.label = document.getElementById('edit-label').value;
+            saveData();
+            const dom = document.querySelector(`#table-dom-${t.id} span`);
+            if(dom) dom.innerText = t.label;
         }
 
-        function clearCurrent() { 
-            if(confirm("¿Resetear conteo actual?")) { 
-                tables.forEach(t => t.status = 'free'); 
-                render(); 
-                saveData(); 
-            } 
+        function adjustSelectedZ(amount) {
+            if(!selectedTableId) return;
+            const t = tables.find(x => x.id === selectedTableId);
+            t.z = (t.z || 10) + amount;
+            document.getElementById('edit-zindex').innerText = t.z;
+            saveData(); render();
         }
 
-        function clearHistory() { 
-            if(confirm("¿Borrar todo el historial de reportes?")) { 
-                audits = []; 
-                if (typeof renderHistory === 'function') renderHistory(); 
-                saveData(); 
-            } 
+        function addNewTable() {
+            const scrollContainer = document.getElementById('main-scroll');
+            const newTable = {
+                id: Date.now(),
+                x: scrollContainer.scrollLeft + 150,
+                y: scrollContainer.scrollTop + 150,
+                label: (tables.length + 1).toString(),
+                status: 'free', w: 55, h: 55, r: 0, z: 10
+            };
+            tables.push(newTable); saveData(); render();
+            selectTable(newTable.id, {clientX: 0, clientY: 0});
+            isDragging = false;
         }
 
-        init();
-    </script>
-</body>
-</html>
+        function cloneSelectedTable() {
+            if(!selectedTableId) return;
+            const original = tables.find(x => x.id === selectedTableId);
+            const clone = { ...original, id: Date.now(), x: original.x + 30, y: original.y + 30, label: original.label + 'B' };
+            tables.push(clone); saveData(); render();
+            selectTable(clone.id, {clientX: 0, clientY: 0});
+            isDragging = false;
+        }
+
+        function deleteSelectedTable() {
+            if(!selectedTableId || !confirm("¿Eliminar esta mesa del mapa?")) return;
+            tables = tables.filter(x => x.id !== selectedTableId);
+            saveData(); deselectTable();
+        }
+
+        function startResize(id, e) {
+            isResizing = true; selectedTableId = id;
+            const t = tables.find(x => x.id === id);
+            startX = e.clientX; startY = e.clientY;
+            startW = t.w; startH = t.h;
+        }
+
+        function startRotate(id, e) {
+            isRotating = true; selectedTableId = id;
+            const t = tables.find(x => x.id === id);
+            const dom = document.getElementById(`table-dom-${id}`);
+            const rect = dom.getBoundingClientRect();
+            const center = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
