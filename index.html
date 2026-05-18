@@ -15,18 +15,18 @@
     
     <style>
         body { 
-            font-family: system-ui, -apple-system, sans-serif; \r
-            overscroll-behavior: none; \r
-            -webkit-tap-highlight-color: transparent; \r
-            background-color: #f8fafc;\r
+            font-family: system-ui, -apple-system, sans-serif; 
+            overscroll-behavior: none; 
+            -webkit-tap-highlight-color: transparent; 
+            background-color: #f8fafc;
         }
         
         /* HABILITAR ENTRADA DE TEXTO Y SELECCIÓN EN CAMPOS DE FORMULARIO */
-        input, textarea {\r
-            user-select: text !important;\r
-            -webkit-user-select: text !important;\r
-            touch-action: auto !important;\r
-        }\r
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            touch-action: auto !important;
+        }
         
         #main-scroll {
             overflow: auto;
@@ -38,7 +38,7 @@
             height: 1200px; 
             width: 2000px;
             position: relative;
-            background-color: #ffffff;\r
+            background-color: #ffffff;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: top left;
         }
@@ -68,13 +68,13 @@
         .mesa-occupied { 
             background-color: #000000 !important; 
             color: #ffffff !important; 
-            border: 2px solid #000000 !important; \r
+            border: 2px solid #000000 !important; 
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
         .mesa-indet { 
             background-color: #ef4444 !important; 
             color: #ffffff !important; 
-            border: 2px solid #ef4444 !important;\r
+            border: 2px solid #ef4444 !important;
             box-shadow: 0 10px 15px -3px rgba(239, 239, 239, 0.3);
         }
 
@@ -115,12 +115,12 @@
         
         .screen-overlay {
             position: fixed;
-            left: 0; right: 0; bottom: 0; top: 205px;    \r
-            background-color: #f8fafc;\r
-            z-index: 30;   \r
-            overflow-y: auto;\r
-            display: none;\r
-            padding-bottom: 100px; \r
+            left: 0; right: 0; bottom: 0; top: 205px;    
+            background-color: #f8fafc;
+            z-index: 30;   
+            overflow-y: auto;
+            display: none;
+            padding-bottom: 100px; 
         }
         .screen-overlay.active { display: flex; }
 
@@ -457,13 +457,13 @@
         }
 
         // =========================================================================
-        // LOGICA DE CAPTURA OCR PERFECCIONADA: ULTRA-FLEXIBLE CON RESETEO COMPLETO
+        // LOGICA OCR CORREGIDA Y REDISEÑADA COMPLETAMENTE PARA ELIMINAR FALLAS
         // =========================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // 1. REQUERIMIENTO CUMPLIDO: Se limpia el plano entero a vacío antes de procesar el nuevo escaneo
+            // Reiniciamos todas las mesas antes de comenzar el nuevo análisis
             tables.forEach(t => { t.status = 'free'; });
             render();
 
@@ -477,51 +477,62 @@
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
+                    // SE CORRIGE EL MOTOR: Ahora lee español e inglés combinados para máxima precisión
+                    Tesseract.recognize(img, 'spa+eng').then(({ data: { text } }) => {
                         
-                        // Convertimos todo a minúsculas para unificar criterios de lectura
-                        let textoBruto = text.toLowerCase();
-                        console.log("--- TEXTO BRUTO DEL SISTEMA ---", textoBruto);
+                        // Normalización absoluta de texto bruto
+                        let textoProcesado = text.toLowerCase()
+                                                .replace(/tb1/g, 'tbl')
+                                                .replace(/tbi/g, 'tbl')
+                                                .replace(/tb\|/g, 'tbl')
+                                                .replace(/m35a/g, 'mesa')
+                                                .replace(/mes4/g, 'mesa')
+                                                .replace(/[\/\\]/g, ' '); // Elimina barras divisorias conflictivas
 
-                        // Remueve distorsiones de caracteres que confunden al lector (ej: tb1, tbi, tb|, tbl)
-                        let textoLimpio = textoBruto
-                                            .replace(/tb1/g, 'tbl')
-                                            .replace(/tbi/g, 'tbl')
-                                            .replace(/tb\|/g, 'tbl')
-                                            .replace(/[\/\\]/g, ' '); // Cambia barras por espacios simples para aislar números
+                        console.log("Texto extraído y normalizado:", textoProcesado);
 
-                        let mesasEncontradas = [];
-                        
-                        // Expresión regular robusta: Busca la palabra 'tbl', tolera cualquier espacio o guión, y captura el número de mesa subsiguiente
-                        let regexMesa = /tbl\s*(\d{1,3})/g;
-                        let coincidencia;
+                        let mesasDetectadas = [];
 
-                        while ((coincidencia = regexMesa.exec(textoLimpio)) !== null) {
-                            let numExtraido = parseInt(coincidencia[1], 10).toString();
-                            if (!mesasEncontradas.includes(numExtraido)) {
-                                mesasEncontradas.push(numExtraido);
+                        // REGLA 1: Captura variaciones directas (ej: tbl 4, mesa4, m.23, t-9)
+                        let regexPatrones = /(?:tbl|mesa|m\.|t\s*[-:])\s*(\d{1,3})/g;
+                        let match;
+                        while ((match = regexPatrones.exec(textoProcesado)) !== null) {
+                            let num = parseInt(match[1], 10).toString();
+                            if (!mesasDetectadas.includes(num)) mesasDetectadas.push(num);
+                        }
+
+                        // REGLA 2: Escáner de números independientes (Soporte si el POS muestra solo listas de números aislados)
+                        // Busca cualquier número de 1 a 3 dígitos aislado por espacios o saltos de línea
+                        let regexNumerosAislados = /\b(\d{1,3})\b/g;
+                        let matchNum;
+                        while ((matchNum = regexNumerosAislados.exec(textoProcesado)) !== null) {
+                            let numAislado = parseInt(matchNum[1], 10).toString();
+                            // Si este número coincide exactamente con alguna etiqueta real de tu plano, lo consideramos válido
+                            let existeEnPlano = tables.some(t => t.label.toString().trim() === numAislado);
+                            if (existeEnPlano && !mesasDetectadas.includes(numAislado)) {
+                                mesasDetectadas.push(numAislado);
                             }
                         }
 
-                        console.log("Números de mesas puras identificados:", mesasEncontradas);
+                        console.log("Lista final de mesas detectadas:", mesasDetectadas);
 
-                        // Cruce directo con tus registros base sin alterar su estructura
-                        let totalPintadas = 0;
+                        // Pintado y cruce de datos en tiempo real
+                        let totalActivadas = 0;
                         tables.forEach(t => {
-                            let identificadorMesa = t.label.toString().trim();
-                            if (mesasEncontradas.includes(identificadorMesa)) {
-                                t.status = 'occupied'; // Pinta de negro
-                                totalPintadas++;
+                            let labelMesa = t.label.toString().trim();
+                            if (mesasDetectadas.includes(labelMesa)) {
+                                t.status = 'occupied'; // Pinta en negro
+                                totalActivadas++;
                             }
                         });
 
-                        showToast(totalPintadas > 0 ? `Se activaron ${totalPintadas} mesas en el plano` : "No se detectaron registros Tbl");
+                        showToast(totalActivadas > 0 ? `Se activaron ${totalActivadas} mesas automáticamente` : "No se detectaron registros Tbl");
                         saveData();
                         render();
 
                     }).catch(err => {
-                        console.error(err);
-                        showToast("Error al leer la captura");
+                        console.error("Falla crítica en OCR:", err);
+                        showToast("Error al procesar lectura de imagen");
                     }).finally(() => {
                         ocrIcon.className = "fa-solid fa-camera text-xs";
                         ocrText.innerText = "SCAN";
