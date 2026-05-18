@@ -180,6 +180,7 @@
             if(document.getElementById('note-insitu')) document.getElementById('note-insitu').innerText = count;
         }
 
+        // CORRECCIÓN SISTEMA NAVEGACIÓN ENTRE PESTAÑAS
         function setMode(m) {
             currentMode = m;
             document.getElementById('nav-audit').className = `flex-1 py-3 rounded-xl font-black text-xs uppercase transition-all ${m==='audit'?'bg-white shadow-sm text-slate-950 border-b-2 border-emerald-500':'text-slate-400'}`;
@@ -188,6 +189,8 @@
             
             document.getElementById('notes-screen').classList.toggle('active', m === 'notes');
             document.getElementById('history-screen').classList.toggle('active', m === 'history');
+            
+            // Corrección: El footer de abajo solo se esconde en historial y notas si estás ahí, pero se re-activa en modo Auditar.
             document.getElementById('main-footer').style.display = (m === 'history' || m === 'notes') ? 'none' : 'block';
             
             if(m === 'history') renderHistory();
@@ -231,7 +234,7 @@
         }
 
         // =========================================================================
-        // ALGORITMO OCR CORREGIDO: EXTRAE LOS NÚMEROS DE MESA CORRECTOS ANTES DE LA "/"
+        // ALGORITMO OCR INTEGRADO: BUSCA EL NÚMERO ENTRE "Tbl " Y LA "/" DEL POS
         // =========================================================================
         async function handleOCR(input) {
             const file = input.files[0]; if (!file) return;
@@ -247,7 +250,7 @@
                 
                 text = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
                 
-                // Expresión calibrada para extraer el número justo antes de la barra "/"
+                // Expresión calibrada: captura los números antes del carácter "/"
                 const regex = /Tbl\s+(\d+)\//g; 
                 
                 let match;
@@ -256,7 +259,7 @@
                 tables.forEach(t => t.status = 'free');
 
                 while ((match = regex.exec(text)) !== null) {
-                    const tableNum = match[1]; // Captura el 90, 10, 41, 8, 22...
+                    const tableNum = match[1]; // Captura perfectamente 90, 10, 41, 8, 22...
                     
                     const target = tables.find(t => t.label === tableNum);
                     if (target) { 
