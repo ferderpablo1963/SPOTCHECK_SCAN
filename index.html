@@ -15,31 +15,30 @@
     
     <style>
         body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            overscroll-behavior: none; 
-            -webkit-tap-highlight-color: transparent; 
-            background-color: #f8fafc;
+            font-family: system-ui, -apple-system, sans-serif; \r
+            overscroll-behavior: none; \r
+            -webkit-tap-highlight-color: transparent; \r
+            background-color: #f8fafc;\r
         }
         
         /* HABILITAR ENTRADA DE TEXTO Y SELECCIÓN EN CAMPOS DE FORMULARIO */
-        input, textarea {
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            touch-action: auto !important;
-        }
+        input, textarea {\r
+            user-select: text !important;\r
+            -webkit-user-select: text !important;\r
+            touch-action: auto !important;\r
+        }\r
         
         #main-scroll {
             overflow: auto;
             position: relative;
             background-color: #e2e8f0;
-            height: calc(100vh - 280px); 
         }
 
         #map-container { 
             height: 1200px; 
             width: 2000px;
             position: relative;
-            background-color: #ffffff;
+            background-color: #ffffff;\r
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: top left;
         }
@@ -69,13 +68,13 @@
         .mesa-occupied { 
             background-color: #000000 !important; 
             color: #ffffff !important; 
-            border: 2px solid #000000 !important; 
+            border: 2px solid #000000 !important; \r
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
         .mesa-indet { 
             background-color: #ef4444 !important; 
             color: #ffffff !important; 
-            border: 2px solid #ef4444 !important;
+            border: 2px solid #ef4444 !important;\r
             box-shadow: 0 10px 15px -3px rgba(239, 239, 239, 0.3);
         }
 
@@ -116,11 +115,11 @@
         
         .screen-overlay {
             position: fixed;
-            left: 0; right: 0; bottom: 0; top: 205px;    
-            background-color: #f8fafc;
-            z-index: 30;   
-            overflow-y: auto;
-            display: none;
+            left: 0; right: 0; bottom: 0; top: 205px;    \r
+            background-color: #f8fafc;\r
+            z-index: 30;   \r
+            overflow-y: auto;\r
+            display: none;\r
             padding-bottom: 100px; 
         }
         .screen-overlay.active { display: flex; }
@@ -408,7 +407,6 @@
                 txt.innerText = 'Edición';
                 txt.className = 'text-[9px] font-black uppercase text-emerald-400';
             }
-            showToast(isLocked ? "Seguridad Activa (Mapa Fijo)" : "Modo Ajuste de Layout");
             render();
         }
 
@@ -459,14 +457,14 @@
         }
 
         // =========================================================================
-        // ALGORITMO DE DETECCIÓN MEJORADO Y LIMPIEZA PREVIA MANDATORIA
+        // PROCESAMIENTO OCR REESTRUCTURADO CON FILTRADO EXCLUSIVO PARA "Tbl [número]"
         // =========================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // 1. REQUERIMIENTO: Vaciar por completo el plano antes de procesar el nuevo escaneo
-            tables.forEach(t => t.status = 'free');
+            // REQUERIMIENTO CUMPLIDO: Resetear el plano a todo vacío antes de escanear de nuevo
+            tables.forEach(t => { t.status = 'free'; });
             render();
 
             const ocrIcon = document.getElementById('btn-ocr-icon');
@@ -480,48 +478,49 @@
                 const img = new Image();
                 img.onload = function() {
                     Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
-                        // Pasamos todo a minúsculas y limpiamos caracteres conflictivos de la lectura
-                        let txtPlano = text.toLowerCase()
-                                            .replace(/\\/g, '/')   // Estandariza diagonales
-                                            .replace(/\|/g, '/')   // Corrige lecturas verticales como barras
-                                            .replace(/tb1/g, 'tbl') // Corrige error común del OCR (1 por l)
-                                            .replace(/tbi/g, 'tbl'); // Corrige error común del OCR (i por l)
+                        // Unificamos todo el texto plano a minúsculas y limpiamos distorsiones visuales comunes
+                        let textoProcesado = text.toLowerCase()
+                                                .replace(/\\/g, '/')   // Reemplaza barras invertidas por normales
+                                                .replace(/\|/g, '/')   // Convierte líneas verticales en barras normales
+                                                .replace(/tb1/g, 'tbl') // Corrige cuando el OCR confunde la l con el 1
+                                                .replace(/tbi/g, 'tbl') // Corrige cuando el OCR confunde la l con la i
+                                                .replace(/tb\|/g, 'tbl');
 
-                        console.log("--- TEXTO PROCESADO POR EL NUEVO EXTRACTOR ---");
-                        console.log(txtPlano);
+                        console.log("--- TEXTO RECONOCIDO LIMPIO ---");
+                        console.log(textoProcesado);
 
-                        let mesasDetectadas = [];
+                        let mesasEncontradas = [];
                         
-                        // Expresión regular que detecta "tbl", espacios opcionales, y captura el número de mesa puro antes de la barra "/"
-                        let regexTbl = /\btbl\s*(\d{1,3})(?:\s*\/|\b)/g;
-                        let match;
+                        // Expresión regular quirúrgica: Busca la palabra 'tbl', ignora espacios opcionales, captura los dígitos y frena en una barra '/' o límite de palabra
+                        let regexMesa = /\btbl\s*(\d{1,3})(?:\s*\/|\b)/g;
+                        let coincidencia;
 
-                        while ((match = regexTbl.exec(txtPlano)) !== null) {
-                            let numeroMesa = parseInt(match[1], 10).toString();
-                            if (!mesasDetectadas.includes(numeroMesa)) {
-                                mesasDetectadas.push(numeroMesa);
+                        while ((coincidencia = regexMesa.exec(textoProcesado)) !== null) {
+                            let numExtraido = parseInt(coincidencia[1], 10).toString();
+                            if (!mesasEncontradas.includes(numExtraido)) {
+                                mesasEncontradas.push(numExtraido);
                             }
                         }
 
-                        console.log("Números finales de mesas extraídos:", mesasDetectadas);
+                        console.log("Mesas puras extraídas que se pintarán de negro:", mesasEncontradas);
 
-                        // Pintar de negro únicamente las encontradas
-                        let encontradas = 0;
+                        // Pintar únicamente las mesas que coinciden con el mapeo del arreglo original
+                        let totalPintadas = 0;
                         tables.forEach(t => {
-                            let cleanLabel = t.label.toString().trim();
-                            if (mesasDetectadas.includes(cleanLabel)) {
-                                t.status = 'occupied';
-                                encontradas++;
+                            let labelLimpio = t.label.toString().trim();
+                            if (mesasEncontradas.includes(labelLimpio)) {
+                                t.status = 'occupied'; // Pintar de negro
+                                totalPintadas++;
                             }
                         });
 
-                        showToast(encontradas > 0 ? `Sincronizadas ${encontradas} mesas (Modo Tbl)` : "No se encontraron registros activos");
+                        showToast(totalPintadas > 0 ? `Se activaron ${totalPintadas} mesas del POS` : "No se detectaron transacciones Tbl");
                         saveData();
                         render();
 
                     }).catch(err => {
                         console.error(err);
-                        showToast("Error crítico en la lectura óptica");
+                        showToast("Error al leer la captura");
                     }).finally(() => {
                         ocrIcon.className = "fa-solid fa-camera text-xs";
                         ocrText.innerText = "SCAN";
