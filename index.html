@@ -458,11 +458,15 @@
         }
 
         // ==================================================================================
-        // ALGORITMO OCR MEJORADO EN SECTOR DE LECTURA Y EXTRACCIÓN DIRECTA
+        // ALGORITMO DE EXTRACCIÓN MEJORADO CON RESET INTEGRADO Y CAPTURA POR LÍNEAS (TXT)
         // ==================================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            // REQUERIMIENTO COMPORTAMIENTO: Resetear todo a vacío antes de procesar
+            tables.forEach(t => t.status = 'free');
+            render();
 
             const ocrIcon = document.getElementById('btn-ocr-icon');
             const ocrText = document.getElementById('btn-ocr-text');
@@ -475,59 +479,51 @@
                 const img = new Image();
                 img.onload = function() {
                     Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
-                        console.log("Texto Crudo Extraído:", text);
+                        // Pasamos todo el resultado a un string de texto plano limpio
+                        let txtPlano = text.toLowerCase().replace(/\\/g, '/');
+                        console.log("--- TEXTO PLANO DETECTADO POR EL OCR ---");
+                        console.log(txtPlano);
 
-                        // 1. Sanitizamos el texto para evitar que Tesseract confunda letras por números pegados
-                        // Reemplazamos deformaciones comunes de la barra "/"
-                        let cleanedText = text.replace(/\\/g, '/');
+                        let mesasDetectadas = [];
 
-                        // 2. Capturamos los números vinculados a los registros con expresiones regulares separadas.
-                        // Patrón A: Busca explícitamente palabras clave como Tbl, Tb1, tbl seguidos de números
-                        const regexKeywords = /(?:Tbl|Tb1|tbl|Ibl|7bl|Thl|1bl|lb1|Th|Tb)\s*(\d+)/gi;
-                        // Patrón B: Captura números inmediatamente previos a una diagonal (ej: 90/1, 41/1, 8/1)
-                        const regexSlash = /(\d+)\s*\//g;
-
-                        let detectedNumbers = [];
+                        // Expresión regular para capturar números relacionados a bloques de mesas/checks
+                        // Captura números aislados de 1 a 3 dígitos o aquellos seguidos de "/" (ej. 90/1, 41/, tbl 10)
+                        let regexNumeros = /\b(\d{1,3})(?:\s*\/|\b)/g;
                         let match;
 
-                        // Ejecutamos análisis con Palabras Clave
-                        while ((match = regexKeywords.exec(cleanedText)) !== null) {
-                            let num = parseInt(match[1], 10).toString();
-                            if(!detectedNumbers.includes(num)) detectedNumbers.push(num);
-                        }
-
-                        // Ejecutamos análisis con diagonales directas
-                        while ((match = regexSlash.exec(cleanedText)) !== null) {
-                            let num = parseInt(match[1], 10).toString();
-                            if(!detectedNumbers.includes(num)) detectedNumbers.push(num);
-                        }
-
-                        console.log("Números finales depurados por el algoritmo:", detectedNumbers);
-
-                        // 3. Cruzamos las etiquetas de las mesas actuales contra los números extraídos
-                        let matchedCount = 0;
-                        tables.forEach(t => {
-                            let currentLabel = t.label.toString().trim();
-                            
-                            // Comparamos de manera flexible quitando ceros a la izquierda si existiesen en el OCR
-                            if (detectedNumbers.includes(currentLabel) || detectedNumbers.includes(parseInt(currentLabel, 10).toString())) {
-                                t.status = 'occupied'; // Pinta en negro
-                                matchedCount++;
-                            } else {
-                                t.status = 'free'; // Resetea a libre si no está en la captura actual
+                        // Analizamos línea por línea del texto simulando una conversión limpia a TXT
+                        let lineas = txtPlano.split('\n');
+                        lineas.forEach(linea => {
+                            // Si la línea contiene indicadores de registros del POS (tbl, check, chk, etc.)
+                            if (linea.includes('tbl') || linea.includes('chk') || linea.includes('check') || linea.includes('/') || linea.includes('tbi')) {
+                                while ((match = regexNumeros.exec(linea)) !== null) {
+                                    let numeroMesa = parseInt(match[1], 10).toString();
+                                    if (!mesasDetectadas.includes(numeroMesa) && numeroMesa !== "0" && numeroMesa !== "1") {
+                                        mesasDetectadas.push(numeroMesa);
+                                    }
+                                }
                             }
                         });
 
-                        if (matchedCount > 0) {
-                            showToast(`Sincronizado: ${matchedCount} mesas ocupadas`);
-                            saveData();
-                            render();
-                        } else {
-                            showToast("No se detectaron mesas. Revisa el enfoque.");
-                        }
+                        console.log("Mesas extraídas tras el análisis de TXT:", mesasDetectadas);
+
+                        // Pintamos de negro únicamente las coincidencias encontradas en el plano real
+                        let encontradas = 0;
+                        tables.forEach(t => {
+                            let cleanLabel = t.label.toString().trim();
+                            if (mesasDetectadas.includes(cleanLabel)) {
+                                t.status = 'occupied';
+                                encontradas++;
+                            }
+                        });
+
+                        showToast(encontradas > 0 ? `Sincronizadas ${encontradas} mesas` : "No se hallaron mesas activas");
+                        saveData();
+                        render();
+
                     }).catch(err => {
                         console.error(err);
-                        showToast("Error leyendo documento");
+                        showToast("Error en la lectura del documento");
                     }).finally(() => {
                         ocrIcon.className = "fa-solid fa-camera text-xs";
                         ocrText.innerText = "SCAN";
@@ -643,7 +639,6 @@
         function deleteAudit(id) { if(confirm("¿Eliminar este reporte?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
         function clearHistory() { if(confirm("¿Seguro de borrar TODO el historial?")) { audits = []; saveData(); renderHistory(); } }
         
-        // MÉTODOS DE MANIPULACIÓN DEL MODAL CON CLASES FLEXIBLES ORIGINALES
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
@@ -661,7 +656,6 @@
             isDragging = true;
             
             const rect = document.getElementById('map-container').getBoundingClientRect();
-            const computedScale = rect.width / 2000;
             startX = e.clientX; startY = e.clientY;
             startLeft = t.x; startTop = t.y;
 
