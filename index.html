@@ -281,13 +281,15 @@
     </div>
 
     <div id="audit-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[500] hidden items-center justify-center p-4">
-        <div class="bg-white rounded-[2.5rem] p-6 max-w-sm w-full space-y-4 shadow-2xl border border-slate-100 transform scale-100 transition-transform">
+        <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl border border-slate-100 transform scale-100 transition-transform">
             <div class="text-center space-y-1">
-                <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl"><i class="fa-solid fa-folder-plus"></i></div>
+                <div class="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center mx-auto mb-1 text-xl">
+                    <i class="fa-solid fa-folder-plus"></i>
+                </div>
                 <h4 class="font-black text-sm uppercase italic text-slate-900">¿Guardar Auditoría actual?</h4>
-                <p class="text-[9px] text-slate-400 font-semibold">Se congelará el registro de mesas activas y se moverá la información al historial.</p>
+                <p class="text-[10px] text-slate-400 font-semibold leading-tight">Se congelará el registro de mesas activas y se moverá la información al historial.</p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 pt-1">
                 <button onclick="closeModal('audit-modal')" class="flex-1 py-3 bg-slate-100 rounded-xl font-black text-[10px] uppercase text-slate-500 active:bg-slate-200">Cancelar</button>
                 <button onclick="saveAudit()" class="flex-1 py-3 bg-emerald-500 text-slate-950 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform">Confirmar</button>
             </div>
@@ -455,9 +457,9 @@
             document.getElementById('stat-percent').innerText = tables.length ? Math.round((count / tables.length) * 100) + '%' : '0%';
         }
 
-        // =========================================================================
-        // ALGORITMO OCR INTEGRADO: BUSCA EL PATRÓN "Tbl X/" EXTRAÍDO DE TU CAPTURA
-        // =========================================================================
+        // ==================================================================================
+        // ALGORITMO OCR INTEGRADO: DETECTA "Tbl", "Tb1", "tbl", EXTRAE EL NÚMERO HASTA EL "/"
+        // ==================================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -473,44 +475,54 @@
                 const img = new Image();
                 img.onload = function() {
                     Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
-                        
-                        // Normalizaciones comunes de OCR para pantallas POS
-                        let processedText = text.replace(/(?:Tb1|7bl|Thl|Ibl|1bl|lb1)/gi, 'Tbl');
-                        
-                        // Captura los números que están inmediatamente después de "Tbl " y antes de la barra "/"
-                        const regex = /Tbl\s+(\d+)\//g;
+                        console.log("Texto Crudo detectado por OCR:", text);
+
+                        // Expresión regular ultra-flexible para tolerar fallas de lectura de Tesseract:
+                        // Captura variaciones como "Tbl", "Tb1", "tbl", "Ibl", "7bl" seguido de espacios opcionales,
+                        // captura los dígitos numéricos (\d+) y se detiene en la barra diagonal "/" o espacio.
+                        const regex = /(?:Tbl|Tb1|tbl|Ibl|7bl|Thl|1bl|lb1)\s*(\d+)/gi;
                         
                         let match;
                         let detectedNumbers = [];
                         
-                        while ((match = regex.exec(processedText)) !== null) {
-                            detectedNumbers.push(match[1]); // Guarda números (ej: 90, 10, 41, 8, 22)
+                        while ((match = regex.exec(text)) !== null) {
+                            detectedNumbers.push(match[1].trim()); 
                         }
+
+                        console.log("Números extraídos de registros Tbl:", detectedNumbers);
 
                         let matchedCount = 0;
                         tables.forEach(t => {
-                            if (detectedNumbers.includes(t.label)) {
-                                t.status = 'occupied'; // Pinta de negro
+                            // Validamos si la etiqueta de la mesa (ej: "90") se encuentra en el listado procesado
+                            if (detectedNumbers.includes(t.label.toString())) {
+                                t.status = 'occupied'; 
                                 matchedCount++;
                             } else {
-                                t.status = 'free'; // Resetea las demás a blanco
+                                t.status = 'free'; 
                             }
                         });
+
+                        // Respaldo de seguridad estricto para la captura adjunta
+                        if (matchedCount === 0) {
+                            // Si por reflejos de luz falló la palabra completa, buscamos patrones de números pegados a barras inclinadas (ej: "90/")
+                            const fallbackRegex = /(\d+)\s*\//g;
+                            while ((match = fallbackRegex.exec(text)) !== null) {
+                                detectedNumbers.push(match[1].trim());
+                            }
+                            tables.forEach(t => {
+                                if (detectedNumbers.includes(t.label.toString())) {
+                                    t.status = 'occupied';
+                                    matchedCount++;
+                                }
+                            });
+                        }
 
                         if (matchedCount > 0) {
                             showToast(`Sincronizado: ${matchedCount} mesas ocupadas`);
                             saveData();
                             render();
                         } else {
-                            // Respaldo por si lee los números pero no detecta la palabra "Tbl" debido a brillo
-                            const fallbackRegex = /(\d+)\//g;
-                            while ((match = fallbackRegex.exec(processedText)) !== null) {
-                                detectedNumbers.push(match[1]);
-                            }
-                            tables.forEach(t => {
-                                if (detectedNumbers.includes(t.label)) { t.status = 'occupied'; matchedCount++; }
-                            });
-                            showToast(matchedCount > 0 ? `Sincro Respaldo: ${matchedCount} mesas` : "No se detectaron mesas en la captura.");
+                            showToast("No se detectaron mesas válidas. Intenta un ángulo más recto.");
                         }
                     }).catch(err => {
                         console.error(err);
@@ -630,7 +642,7 @@
         function deleteAudit(id) { if(confirm("¿Eliminar este reporte?")) { audits = audits.filter(a => a.id !== id); saveData(); renderHistory(); } }
         function clearHistory() { if(confirm("¿Seguro de borrar TODO el historial?")) { audits = []; saveData(); renderHistory(); } }
         
-        // REESTABLECIDAS A TU LÓGICA DE ESTILOS ORIGINAL
+        // REESTABLECIDAS A TU LÓGICA DE ESTILOS ORIGINAL SIN TOCAR CLASES
         function openModal(id) { 
             document.getElementById(id).style.display = 'flex';
         }
