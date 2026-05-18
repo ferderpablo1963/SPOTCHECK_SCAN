@@ -120,7 +120,7 @@
             z-index: 30;   \r
             overflow-y: auto;\r
             display: none;\r
-            padding-bottom: 100px; 
+            padding-bottom: 100px; \r
         }
         .screen-overlay.active { display: flex; }
 
@@ -457,13 +457,13 @@
         }
 
         // =========================================================================
-        // PROCESAMIENTO OCR REESTRUCTURADO CON FILTRADO EXCLUSIVO PARA "Tbl [número]"
+        // LOGICA DE CAPTURA OCR PERFECCIONADA: ULTRA-FLEXIBLE CON RESETEO COMPLETO
         // =========================================================================
         function processImageOCR(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // REQUERIMIENTO CUMPLIDO: Resetear el plano a todo vacío antes de escanear de nuevo
+            // 1. REQUERIMIENTO CUMPLIDO: Se limpia el plano entero a vacío antes de procesar el nuevo escaneo
             tables.forEach(t => { t.status = 'free'; });
             render();
 
@@ -478,43 +478,44 @@
                 const img = new Image();
                 img.onload = function() {
                     Tesseract.recognize(img, 'eng').then(({ data: { text } }) => {
-                        // Unificamos todo el texto plano a minúsculas y limpiamos distorsiones visuales comunes
-                        let textoProcesado = text.toLowerCase()
-                                                .replace(/\\/g, '/')   // Reemplaza barras invertidas por normales
-                                                .replace(/\|/g, '/')   // Convierte líneas verticales en barras normales
-                                                .replace(/tb1/g, 'tbl') // Corrige cuando el OCR confunde la l con el 1
-                                                .replace(/tbi/g, 'tbl') // Corrige cuando el OCR confunde la l con la i
-                                                .replace(/tb\|/g, 'tbl');
+                        
+                        // Convertimos todo a minúsculas para unificar criterios de lectura
+                        let textoBruto = text.toLowerCase();
+                        console.log("--- TEXTO BRUTO DEL SISTEMA ---", textoBruto);
 
-                        console.log("--- TEXTO RECONOCIDO LIMPIO ---");
-                        console.log(textoProcesado);
+                        // Remueve distorsiones de caracteres que confunden al lector (ej: tb1, tbi, tb|, tbl)
+                        let textoLimpio = textoBruto
+                                            .replace(/tb1/g, 'tbl')
+                                            .replace(/tbi/g, 'tbl')
+                                            .replace(/tb\|/g, 'tbl')
+                                            .replace(/[\/\\]/g, ' '); // Cambia barras por espacios simples para aislar números
 
                         let mesasEncontradas = [];
                         
-                        // Expresión regular quirúrgica: Busca la palabra 'tbl', ignora espacios opcionales, captura los dígitos y frena en una barra '/' o límite de palabra
-                        let regexMesa = /\btbl\s*(\d{1,3})(?:\s*\/|\b)/g;
+                        // Expresión regular robusta: Busca la palabra 'tbl', tolera cualquier espacio o guión, y captura el número de mesa subsiguiente
+                        let regexMesa = /tbl\s*(\d{1,3})/g;
                         let coincidencia;
 
-                        while ((coincidencia = regexMesa.exec(textoProcesado)) !== null) {
+                        while ((coincidencia = regexMesa.exec(textoLimpio)) !== null) {
                             let numExtraido = parseInt(coincidencia[1], 10).toString();
                             if (!mesasEncontradas.includes(numExtraido)) {
                                 mesasEncontradas.push(numExtraido);
                             }
                         }
 
-                        console.log("Mesas puras extraídas que se pintarán de negro:", mesasEncontradas);
+                        console.log("Números de mesas puras identificados:", mesasEncontradas);
 
-                        // Pintar únicamente las mesas que coinciden con el mapeo del arreglo original
+                        // Cruce directo con tus registros base sin alterar su estructura
                         let totalPintadas = 0;
                         tables.forEach(t => {
-                            let labelLimpio = t.label.toString().trim();
-                            if (mesasEncontradas.includes(labelLimpio)) {
-                                t.status = 'occupied'; // Pintar de negro
+                            let identificadorMesa = t.label.toString().trim();
+                            if (mesasEncontradas.includes(identificadorMesa)) {
+                                t.status = 'occupied'; // Pinta de negro
                                 totalPintadas++;
                             }
                         });
 
-                        showToast(totalPintadas > 0 ? `Se activaron ${totalPintadas} mesas del POS` : "No se detectaron transacciones Tbl");
+                        showToast(totalPintadas > 0 ? `Se activaron ${totalPintadas} mesas en el plano` : "No se detectaron registros Tbl");
                         saveData();
                         render();
 
